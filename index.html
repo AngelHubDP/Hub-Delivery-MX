@@ -396,9 +396,11 @@ function loadRecords() {
     return;
   }
   setSyncStatus('loading', 'Cargando registros...');
-  fetch(API_URL + '?action=read')
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', API_URL + '?action=read', true);
+  xhr.onload = function() {
+    try {
+      var data = JSON.parse(xhr.responseText);
       if (data.success) {
         records = data.records || [];
         isOnline = true;
@@ -406,46 +408,67 @@ function loadRecords() {
         setSyncStatus('online', 'Conectado · ' + records.length + ' registros sincronizados');
         updateStats(); renderTable();
       } else { throw new Error(data.error || 'Error'); }
-    })
-    .catch(function(err) {
+    } catch(e) {
       isOnline = false;
-      setSyncStatus('offline', 'Sin conexión — ' + err.message);
-      try { records = JSON.parse(localStorage.getItem('hubDelivery_v4') || '[]'); } catch(e) { records = []; }
-      autoCleanup(); updateStats(); renderTable();
-      if (records.length) setSyncStatus('offline', 'Sin conexión — mostrando ' + records.length + ' datos locales');
-    });
+      setSyncStatus('offline', 'Error al leer datos — ' + e.message);
+    }
+  };
+  xhr.onerror = function() {
+    isOnline = false;
+    setSyncStatus('offline', 'Sin conexión — Error de red');
+    try { records = JSON.parse(localStorage.getItem('hubDelivery_v4') || '[]'); } catch(e) { records = []; }
+    autoCleanup(); updateStats(); renderTable();
+    if (records.length) setSyncStatus('offline', 'Sin conexión — mostrando ' + records.length + ' datos locales');
+  };
+  xhr.send();
 }
 
 function saveToCloud(newRecords) {
   try { localStorage.setItem('hubDelivery_v4', JSON.stringify(records)); } catch(e) {}
   if (API_URL === 'PEGA_TU_URL_AQUI') { showToast('⚠️ Guardado solo localmente', true); return Promise.resolve(); }
   setSyncStatus('loading', 'Guardando...');
-  return fetch(API_URL, {
-    method: 'POST', headers: { 'Content-Type': 'text/plain' },
-    body: JSON.stringify({ action: 'add', records: newRecords })
-  }).then(function(r) { return r.json(); })
-  .then(function(data) {
-    if (data.success) setSyncStatus('online', 'Conectado · ' + records.length + ' registros sincronizados');
-    else throw new Error(data.error);
-  }).catch(function(err) {
-    setSyncStatus('offline', 'Error al guardar — ' + err.message);
-    showToast('⚠️ Error de conexión. Guardado localmente.', true);
+  return new Promise(function(resolve) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', API_URL, true);
+    xhr.setRequestHeader('Content-Type', 'text/plain');
+    xhr.onload = function() {
+      try {
+        var data = JSON.parse(xhr.responseText);
+        if (data.success) setSyncStatus('online', 'Conectado · ' + records.length + ' registros sincronizados');
+        else throw new Error(data.error);
+      } catch(e) {
+        setSyncStatus('offline', 'Error al guardar — ' + e.message);
+        showToast('⚠️ Error de conexión. Guardado localmente.', true);
+      }
+      resolve();
+    };
+    xhr.onerror = function() {
+      setSyncStatus('offline', 'Error al guardar — Error de red');
+      showToast('⚠️ Error de conexión. Guardado localmente.', true);
+      resolve();
+    };
+    xhr.send(JSON.stringify({ action: 'add', records: newRecords }));
   });
 }
 
 function deleteFromCloud(uid) {
   try { localStorage.setItem('hubDelivery_v4', JSON.stringify(records)); } catch(e) {}
   if (API_URL === 'PEGA_TU_URL_AQUI') return;
-  fetch(API_URL + '?action=delete&uid=' + encodeURIComponent(uid))
-    .then(function(r) { return r.json(); })
-    .then(function(data) { if (data.success) setSyncStatus('online', 'Conectado · ' + records.length + ' registros'); })
-    .catch(function(err) { setSyncStatus('offline', 'Error — ' + err.message); });
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', API_URL + '?action=delete&uid=' + encodeURIComponent(uid), true);
+  xhr.onload = function() {
+    try { var data = JSON.parse(xhr.responseText); if (data.success) setSyncStatus('online', 'Conectado · ' + records.length + ' registros'); }
+    catch(e) {}
+  };
+  xhr.send();
 }
 
 function clearFromCloud() {
   try { localStorage.removeItem('hubDelivery_v4'); } catch(e) {}
   if (API_URL === 'PEGA_TU_URL_AQUI') return;
-  fetch(API_URL + '?action=clear').catch(function() {});
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', API_URL + '?action=clear', true);
+  xhr.send();
 }
 var selectedType = '';
 var selectedDuration = '';
