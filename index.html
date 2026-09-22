@@ -1294,7 +1294,7 @@ function autoCleanup() {
 updateStats(); renderTable();
 loadRecords();
 // Auto-refresh every 30 seconds
-setInterval(function() { if (API_URL !== 'https://script.google.com/macros/s/AKfycbyD2ScZxQb2gaMs3QVIUvA1n9HU4J6rbw8pls42mBW6VQqgBF0ZyOGrMgrm4r0Oahc-/exec') loadRecords(); }, 30000);
+setInterval(function() { if (API_URL != 'https://script.google.com/macros/s/AKfycbyD2ScZxQb2gaMs3QVIUvA1n9HU4J6rbw8pls42mBW6VQqgBF0ZyOGrMgrm4r0Oahc-/exec') loadRecords(); }, 30000);
 try {
   var now = new Date();
   var daysAhead = (now.getHours() >= 18 && now.getMinutes() >= 30) || now.getHours() >= 19 ? 2 : 1;
