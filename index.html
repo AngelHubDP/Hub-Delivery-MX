@@ -396,11 +396,12 @@ function loadRecords() {
     return;
   }
   setSyncStatus('loading', 'Cargando registros...');
-  var xhr = new XMLHttpRequest();
-  xhr.open('GET', API_URL + '?action=read', true);
-  xhr.onload = function() {
+  var cbName = '_hdcb_' + Date.now();
+  window[cbName] = function(data) {
+    delete window[cbName];
+    var el = document.getElementById(cbName);
+    if (el) el.remove();
     try {
-      var data = JSON.parse(xhr.responseText);
       if (data.success) {
         records = data.records || [];
         isOnline = true;
@@ -413,14 +414,19 @@ function loadRecords() {
       setSyncStatus('offline', 'Error al leer datos — ' + e.message);
     }
   };
-  xhr.onerror = function() {
+  var s = document.createElement('script');
+  s.id = cbName;
+  s.src = API_URL + '?action=read&callback=' + cbName;
+  s.onerror = function() {
+    delete window[cbName];
+    s.remove();
     isOnline = false;
     setSyncStatus('offline', 'Sin conexión — Error de red');
     try { records = JSON.parse(localStorage.getItem('hubDelivery_v4') || '[]'); } catch(e) { records = []; }
     autoCleanup(); updateStats(); renderTable();
     if (records.length) setSyncStatus('offline', 'Sin conexión — mostrando ' + records.length + ' datos locales');
   };
-  xhr.send();
+  document.body.appendChild(s);
 }
 
 function saveToCloud(newRecords) {
@@ -428,47 +434,73 @@ function saveToCloud(newRecords) {
   if (API_URL === 'PEGA_TU_URL_AQUI') { showToast('⚠️ Guardado solo localmente', true); return Promise.resolve(); }
   setSyncStatus('loading', 'Guardando...');
   return new Promise(function(resolve) {
-    var xhr = new XMLHttpRequest();
-    xhr.open('POST', API_URL, true);
-    xhr.setRequestHeader('Content-Type', 'text/plain');
-    xhr.onload = function() {
-      try {
-        var data = JSON.parse(xhr.responseText);
-        if (data.success) setSyncStatus('online', 'Conectado · ' + records.length + ' registros sincronizados');
-        else throw new Error(data.error);
-      } catch(e) {
-        setSyncStatus('offline', 'Error al guardar — ' + e.message);
-        showToast('⚠️ Error de conexión. Guardado localmente.', true);
-      }
-      resolve();
-    };
-    xhr.onerror = function() {
-      setSyncStatus('offline', 'Error al guardar — Error de red');
-      showToast('⚠️ Error de conexión. Guardado localmente.', true);
-      resolve();
-    };
-    xhr.send(JSON.stringify({ action: 'add', records: newRecords }));
+    var pending = newRecords.length;
+    if (pending === 0) { resolve(); return; }
+    newRecords.forEach(function(rec) {
+      var cbSave = '_hdsv_' + Date.now() + '_' + Math.random().toString(36).substr(2,5);
+      window[cbSave] = function(data) {
+        delete window[cbSave];
+        var el = document.getElementById(cbSave);
+        if (el) el.remove();
+        pending--;
+        if (pending <= 0) {
+          setSyncStatus('online', 'Conectado · ' + records.length + ' registros sincronizados');
+          resolve();
+        }
+      };
+      var params = '?action=addone&callback=' + cbSave +
+        '&uid=' + encodeURIComponent(rec.uid || '') +
+        '&timestamp=' + encodeURIComponent(rec.timestamp || '') +
+        '&tipo=' + encodeURIComponent(rec.tipo || '') +
+        '&idRepartidor=' + encodeURIComponent(rec.idRepartidor || '') +
+        '&nombre=' + encodeURIComponent(rec.nombre || '') +
+        '&estacion=' + encodeURIComponent(rec.estacion || '') +
+        '&fechaInicio=' + encodeURIComponent(rec.fechaInicio || '') +
+        '&fechaFin=' + encodeURIComponent(rec.fechaFin || '') +
+        '&motivo=' + encodeURIComponent(rec.motivo || '') +
+        '&diasDescanso=' + encodeURIComponent(rec.diasDescanso || '') +
+        '&registradoPor=' + encodeURIComponent(rec.registradoPor || '') +
+        '&comentarios=' + encodeURIComponent(rec.comentarios || '');
+      var ss = document.createElement('script');
+      ss.id = cbSave;
+      ss.src = API_URL + params;
+      ss.onerror = function() {
+        delete window[cbSave];
+        ss.remove();
+        pending--;
+        if (pending <= 0) {
+          setSyncStatus('offline', 'Error al guardar');
+          showToast('⚠️ Error de conexión. Guardado localmente.', true);
+          resolve();
+        }
+      };
+      document.body.appendChild(ss);
+    });
+    // Timeout fallback
+    setTimeout(function() { resolve(); }, 15000);
   });
 }
 
 function deleteFromCloud(uid) {
   try { localStorage.setItem('hubDelivery_v4', JSON.stringify(records)); } catch(e) {}
   if (API_URL === 'PEGA_TU_URL_AQUI') return;
-  var xhr = new XMLHttpRequest();
-  xhr.open('GET', API_URL + '?action=delete&uid=' + encodeURIComponent(uid), true);
-  xhr.onload = function() {
-    try { var data = JSON.parse(xhr.responseText); if (data.success) setSyncStatus('online', 'Conectado · ' + records.length + ' registros'); }
-    catch(e) {}
-  };
-  xhr.send();
+  var cbDel = '_hddel_' + Date.now();
+  window[cbDel] = function(data) { delete window[cbDel]; var el = document.getElementById(cbDel); if(el) el.remove(); if(data.success) setSyncStatus('online', 'Conectado · ' + records.length + ' registros'); };
+  var sd = document.createElement('script');
+  sd.id = cbDel;
+  sd.src = API_URL + '?action=delete&uid=' + encodeURIComponent(uid) + '&callback=' + cbDel;
+  document.body.appendChild(sd);
 }
 
 function clearFromCloud() {
   try { localStorage.removeItem('hubDelivery_v4'); } catch(e) {}
   if (API_URL === 'PEGA_TU_URL_AQUI') return;
-  var xhr = new XMLHttpRequest();
-  xhr.open('GET', API_URL + '?action=clear', true);
-  xhr.send();
+  var cbClr = '_hdclr_' + Date.now();
+  window[cbClr] = function() { delete window[cbClr]; var el = document.getElementById(cbClr); if(el) el.remove(); };
+  var sc = document.createElement('script');
+  sc.id = cbClr;
+  sc.src = API_URL + '?action=clear&callback=' + cbClr;
+  document.body.appendChild(sc);
 }
 var selectedType = '';
 var selectedDuration = '';
