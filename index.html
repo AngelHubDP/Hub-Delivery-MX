@@ -278,7 +278,7 @@
         <button type="button" class="day-chip" onclick="toggleDay(this,'Viernes')">Viernes</button>
         <button type="button" class="day-chip" onclick="toggleDay(this,'Sábado')">Sábado</button>
         <button type="button" class="day-chip" onclick="toggleDay(this,'Domingo')">Domingo</button>
-        <button type="button" class="day-chip" style="border-color:#de350b;color:#de350b;" onclick="toggleDay(this,'Sin Descanso')">Sin Descanso</button>
+        <button type="button" class="day-chip" onclick="toggleDay(this,'Sin Descanso')">Sin Descanso</button>
       </div>
     </div>
 
@@ -354,7 +354,7 @@
   </div>
 </div>
 
-<div class="footer">Hub Delivery — Control de Estatus v4.0 · Datos sincronizados con Google Sheets <i class="fa-solid fa-cloud"></i></div>
+<div class="footer">Hub Delivery — Control de Estatus v4.1 · Datos sincronizados con Google Sheets <i class="fa-solid fa-cloud"></i></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -368,9 +368,10 @@ var API_URL = 'https://hub-delivery.angelhubamzl.workers.dev';
 var MOTIVOS = {
   'Descanso': ['Temas Personales', 'Temas de Salud', 'Temas de Negocio', 'Mal Performance', 'Deja Paquetes'],
   'Suspensión': ['Mal Performance', 'Rechazo de Ruta', 'Backlog', "DNR's", 'Revisión de Coordenadas', 'Revisión de Radio', 'Temas de Pagos', 'Fallas en Dispositivo Móvil y/o App', 'Solicitada por el Partner', 'Temas Personales', 'Temas de Salud'],
-  'Activación': ['Ingreso Nuevo', 'Reentrenamiento Completado', 'Reactivación'],
+  'Activación': ['Ingreso Nuevo', 'Reentrenamiento Completado', 'Reactivación', 'Sale en Día de Descanso'],
   'Cambio Días': ['Cambio de Días de Descanso']
 };
+var OWNER_LOGIN = 'avelazqz';
 
 var records = [];
 var isOnline = false;
@@ -638,13 +639,21 @@ document.addEventListener('click', function(e) {
 
 // === TOAST ===
 function toggleDay(btn, day) {
-  var idx = selectedDays.indexOf(day);
-  if (idx === -1) {
-    selectedDays.push(day);
+  if (day === 'Sin Descanso') {
+    selectedDays = ['Sin Descanso'];
+    document.querySelectorAll('.day-chip').forEach(function(b) { b.classList.remove('selected'); });
     btn.classList.add('selected');
   } else {
-    selectedDays.splice(idx, 1);
-    btn.classList.remove('selected');
+    var sinIdx = selectedDays.indexOf('Sin Descanso');
+    if (sinIdx !== -1) {
+      selectedDays.splice(sinIdx, 1);
+      document.querySelectorAll('.day-chip').forEach(function(b) {
+        if (b.textContent.trim() === 'Sin Descanso') b.classList.remove('selected');
+      });
+    }
+    var idx = selectedDays.indexOf(day);
+    if (idx === -1) { selectedDays.push(day); btn.classList.add('selected'); }
+    else { selectedDays.splice(idx, 1); btn.classList.remove('selected'); }
   }
 }
 
@@ -788,16 +797,26 @@ function deleteRecord(uid) {
 }
 
 function updateStats() {
-  var d = records.filter(function(r) { return r.tipo === 'Descanso'; }).length;
-  var s = records.filter(function(r) { return r.tipo === 'Suspensión'; }).length;
-  var a = records.filter(function(r) { return r.tipo === 'Activación'; }).length;
-  var cd = records.filter(function(r) { return r.tipo === 'Cambio Días'; }).length;
-  document.getElementById('statTotal').textContent = records.length;
+  var visibleRecords = records;
+  // After 11 PM, stats reflect only future records (visual only)
+  if (new Date().getHours() >= 23) {
+    var tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    var tomorrowStr = tomorrow.toISOString().slice(0, 10);
+    visibleRecords = records.filter(function(r) {
+      return r.fechaFin === 'INDEFINIDO' || (r.fechaInicio && r.fechaInicio >= tomorrowStr);
+    });
+  }
+  var d = visibleRecords.filter(function(r) { return r.tipo === 'Descanso'; }).length;
+  var s = visibleRecords.filter(function(r) { return r.tipo === 'Suspensión'; }).length;
+  var a = visibleRecords.filter(function(r) { return r.tipo === 'Activación'; }).length;
+  var cd = visibleRecords.filter(function(r) { return r.tipo === 'Cambio Días'; }).length;
+  document.getElementById('statTotal').textContent = visibleRecords.length;
   document.getElementById('statDescanso').textContent = d;
   document.getElementById('statSuspension').textContent = s;
   document.getElementById('statActivacion').textContent = a;
   document.getElementById('statCambioDias').textContent = cd;
-  document.getElementById('tabCount').textContent = records.length;
+  document.getElementById('tabCount').textContent = visibleRecords.length;
 }
 
 function setFilter(f, el) {
@@ -815,7 +834,7 @@ function sortBy(field) {
 
 function getFiltered() {
   var search = document.getElementById('searchInput').value.toLowerCase();
-  return records
+  var result = records
     .filter(function(r) { return activeFilter === 'Todos' || r.tipo === activeFilter; })
     .filter(function(r) {
       return !search || r.idRepartidor.toLowerCase().indexOf(search) !== -1
@@ -826,6 +845,16 @@ function getFiltered() {
       var av = a[sortField] || '', bv = b[sortField] || '';
       return av < bv ? -sortDir : av > bv ? sortDir : 0;
     });
+  // After 11 PM, hide records whose fechaInicio is today or earlier (visual only)
+  if (new Date().getHours() >= 23) {
+    var tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    var tomorrowStr = tomorrow.toISOString().slice(0, 10);
+    result = result.filter(function(r) {
+      return r.fechaFin === 'INDEFINIDO' || (r.fechaInicio && r.fechaInicio >= tomorrowStr);
+    });
+  }
+  return result;
 }
 
 function renderTable() {
@@ -850,7 +879,7 @@ function renderTable() {
       '<td style="white-space:nowrap;">' + (r.fechaFin||'—') + '</td>' +
       '<td>' + r.motivo + (r.diasDescanso ? '<br><span style="font-size:11px;color:#7B61FF;font-weight:600;">' + r.diasDescanso + '</span>' : '') + '</td>' +
             '<td style="color:var(--color-text-muted);font-size:12px;">' + (r.registradoPor||'—') + '</td>' +
-      '<td>' + ((r.registradoPor === sessionUser || r.registradoLogin === sessionLogin) ? '<button class="btn-delete" onclick="deleteRecord(\'' + r.uid + '\')" title="Eliminar"><i class="fa-solid fa-trash-can"></i></button>' : '<span style="color:#ccc;font-size:11px;">—</span>') + '</td></tr>';
+      '<td>' + ((r.registradoPor === sessionUser || r.registradoLogin === sessionLogin || sessionLogin === OWNER_LOGIN) ? '<button class="btn-delete" onclick="deleteRecord(\'' + r.uid + '\')" title="Eliminar"><i class="fa-solid fa-trash-can"></i></button>' : '<span style="color:#ccc;font-size:11px;">—</span>') + '</td></tr>';
   }).join('');
 }
 
@@ -905,7 +934,7 @@ function switchTab(tab) {
 }
 
 // Operators list
-var OPERATORS = [{"name": "Abigail Santiago", "login": "mdianr"}, {"name": "Adan Valencia", "login": "adanberm"}, {"name": "Alberto Rubio", "login": "joalheru"}, {"name": "Alejandro Canseco", "login": "njocontr"}, {"name": "Andres Mendez", "login": "mebandre"}, {"name": "Azucena Ramirez", "login": "huemria"}, {"name": "Carlos Villavicencio", "login": "villacaj"}, {"name": "Cesar Raudales", "login": "craudale"}, {"name": "Christoper Bocanegra", "login": "bocachri"}, {"name": "Claudia Celis", "login": "claucel"}, {"name": "Cristina Soriano", "login": "crzznmc"}, {"name": "Diana Vazquez", "login": "vazquekd"}, {"name": "Enrique Villalobos", "login": "flresao"}, {"name": "Erik Ramirez", "login": "erikdara"}, {"name": "Estefania Bringas", "login": "briestef"}, {"name": "Felipe Bartolo", "login": "fgilbart"}, {"name": "Gabriel Dorantes", "login": "dogabrif"}, {"name": "Gabriel Lopez", "login": "clopezsi"}, {"name": "Gerardo Chavez", "login": "chgerary"}, {"name": "Gerardo Palafox", "login": "lgerardp"}, {"name": "Gustavo Cordero", "login": "gucorte"}, {"name": "Jaime Gonzalez", "login": "jaisgonz"}, {"name": "Janeth Galas", "login": "galasjac"}, {"name": "Jonathan Valdez", "login": "jrvr"}, {"name": "Jorge Cortes", "login": "vjorgeis"}, {"name": "Jose Cundapi", "login": "cundagjo"}, {"name": "Jose Efren Jimenez", "login": "ajvlasc"}, {"name": "Jose Luis Delgado", "login": "jopani"}, {"name": "Juan Lopez", "login": "lopjuanp"}, {"name": "Leonardo de la Vega", "login": "bolaleon"}, {"name": "Luis Juarez", "login": "ujuarezl"}, {"name": "Luis Marquillo", "login": "marqluij"}, {"name": "Maribel Dominguez", "login": "tmaribdo"}, {"name": "María Elena Hernández", "login": "mllmu"}, {"name": "Neidi Gonzalez", "login": "martneid"}, {"name": "Norma Bautista", "login": "romenor"}, {"name": "Omar Ruiz", "login": "gonmoma"}, {"name": "Robert Garcia", "login": "robgarcf"}, {"name": "Roberto Samano", "login": "samanogr"}, {"name": "Rodolfo Patiño", "login": "sanrdl"}, {"name": "Samuel Dorantes", "login": "dorantsa"}, {"name": "Saul Urzua", "login": "sauurzua"}];
+var OPERATORS = [{"name":"Abigail Santiago","login":"mdianr"},{"name":"Adan Valencia","login":"adanberm"},{"name":"Alberto Rubio","login":"joalheru"},{"name":"Alejandro Canseco","login":"njocontr"},{"name":"Andres Mendez","login":"mebandre"},{"name":"Angel Chavez","login":"avelazqz"},{"name":"Azucena Ramirez","login":"huemria"},{"name":"Carlos Villavicencio","login":"villacaj"},{"name":"Cesar Raudales","login":"craudale"},{"name":"Christoper Bocanegra","login":"bocachri"},{"name":"Claudia Celis","login":"claucel"},{"name":"Cristina Soriano","login":"crzznmc"},{"name":"Diana Vazquez","login":"vazquekd"},{"name":"Enrique Villalobos","login":"flresao"},{"name":"Erik Ramirez","login":"erikdara"},{"name":"Estefania Bringas","login":"briestef"},{"name":"Felipe Bartolo","login":"fgilbart"},{"name":"Gabriel Dorantes","login":"dogabrif"},{"name":"Gabriel Lopez","login":"clopezsi"},{"name":"Gerardo Chavez","login":"chgerary"},{"name":"Gerardo Palafox","login":"lgerardp"},{"name":"Gustavo Cordero","login":"gucorte"},{"name":"Jaime Gonzalez","login":"jaisgonz"},{"name":"Janeth Galas","login":"galasjac"},{"name":"Jonathan Valdez","login":"jrvr"},{"name":"Jorge Cortes","login":"vjorgeis"},{"name":"Jose Cundapi","login":"cundagjo"},{"name":"Jose Efren Jimenez","login":"ajvlasc"},{"name":"Jose Luis Delgado","login":"jopani"},{"name":"Juan Lopez","login":"lopjuanp"},{"name":"Leonardo de la Vega","login":"bolaleon"},{"name":"Luis Juarez","login":"ujuarezl"},{"name":"Luis Marquillo","login":"marqluij"},{"name":"María Elena Hernández","login":"mllmu"},{"name":"Maribel Dominguez","login":"tmaribdo"},{"name":"Neidi Gonzalez","login":"martneid"},{"name":"Norma Bautista","login":"romenor"},{"name":"Omar Ruiz","login":"gonmoma"},{"name":"Robert Garcia","login":"robgarcf"},{"name":"Roberto Samano","login":"samanogr"},{"name":"Rodolfo Patiño","login":"sanrdl"},{"name":"Samuel Dorantes","login":"dorantsa"},{"name":"Saul Urzua","login":"sauurzua"}];
 
 // Session user
 var sessionUser = '';
