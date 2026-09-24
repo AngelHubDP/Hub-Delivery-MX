@@ -269,7 +269,7 @@
     </div>
 
     <div id="daySelectRow" class="hidden">
-      <span class="section-label">Días de descanso <span class="req">*</span></span>
+      <span class="section-label">Días de descanso <span class="req" id="dayReqAsterisk">*</span></span>
       <div class="day-selector" id="daySelector">
         <button type="button" class="day-chip" onclick="toggleDay(this,'Lunes')">Lunes</button>
         <button type="button" class="day-chip" onclick="toggleDay(this,'Martes')">Martes</button>
@@ -500,6 +500,7 @@ function selectType(type) {
       document.getElementById('fechaInicioLabel').innerHTML = 'Fecha de inicio <span class="req">*</span>';
       document.getElementById('indefToggle').style.display = 'none';
       document.getElementById('daySelectRow').classList.remove('hidden');
+      document.getElementById('dayReqAsterisk').style.display = 'inline';
       document.getElementById('motivoGroup').classList.add('hidden');
       // Reset day selection
       document.querySelectorAll('.day-chip').forEach(function(c) { c.classList.remove('selected'); });
@@ -509,6 +510,7 @@ function selectType(type) {
       document.getElementById('fechaInicioLabel').innerHTML = 'Fecha <span class="req">*</span>';
       document.getElementById('indefToggle').style.display = 'none';
       document.getElementById('daySelectRow').classList.remove('hidden');
+      document.getElementById('dayReqAsterisk').style.display = 'none';
       // Reset day selection
       document.querySelectorAll('.day-chip').forEach(function(c) { c.classList.remove('selected'); });
       selectedDays = [];
