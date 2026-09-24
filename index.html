@@ -278,7 +278,7 @@
         <button type="button" class="day-chip" onclick="toggleDay(this,'Viernes')">Viernes</button>
         <button type="button" class="day-chip" onclick="toggleDay(this,'Sábado')">Sábado</button>
         <button type="button" class="day-chip" onclick="toggleDay(this,'Domingo')">Domingo</button>
-        <button type="button" class="day-chip" onclick="toggleDay(this,'Sin Descanso')">Sin Descanso</button>
+        <button type="button" class="day-chip" style="border-color:#de350b;color:#de350b;" onclick="toggleDay(this,'Sin Descanso')">Sin Descanso</button>
       </div>
     </div>
 
@@ -363,15 +363,12 @@ var REPARTIDORES = [{"id": "7697660437", "name": "MA. DE LOURDES PICHARDO TRUJIL
 // =============================================
 // CONFIGURACIÓN — PEGA TU URL DE GOOGLE APPS SCRIPT AQUÍ
 // =============================================
-'https://hub-delivery.angelhubamzl.workers.dev';
-
-// Owner login - can delete any record
-var OWNER_LOGIN = 'avelazqz';
+var API_URL = 'https://hub-delivery.angelhubamzl.workers.dev';
 
 var MOTIVOS = {
   'Descanso': ['Temas Personales', 'Temas de Salud', 'Temas de Negocio', 'Mal Performance', 'Deja Paquetes'],
   'Suspensión': ['Mal Performance', 'Rechazo de Ruta', 'Backlog', "DNR's", 'Revisión de Coordenadas', 'Revisión de Radio', 'Temas de Pagos', 'Fallas en Dispositivo Móvil y/o App', 'Solicitada por el Partner', 'Temas Personales', 'Temas de Salud'],
-  'Activación': ['Ingreso Nuevo', 'Reentrenamiento Completado', 'Reactivación', 'Sale en Día de Descanso'],
+  'Activación': ['Ingreso Nuevo', 'Reentrenamiento Completado', 'Reactivación'],
   'Cambio Días': ['Cambio de Días de Descanso']
 };
 
@@ -641,23 +638,13 @@ document.addEventListener('click', function(e) {
 
 // === TOAST ===
 function toggleDay(btn, day) {
-  if (day === 'Sin Descanso') {
-    // If Sin Descanso is clicked, deselect all others and only select Sin Descanso
-    selectedDays = ['Sin Descanso'];
-    document.querySelectorAll('.day-chip').forEach(function(c) { c.classList.remove('selected'); });
+  var idx = selectedDays.indexOf(day);
+  if (idx === -1) {
+    selectedDays.push(day);
     btn.classList.add('selected');
   } else {
-    // If a normal day is clicked, remove Sin Descanso if present
-    var sinIdx = selectedDays.indexOf('Sin Descanso');
-    if (sinIdx !== -1) { selectedDays.splice(sinIdx, 1); document.querySelectorAll('.day-chip').forEach(function(c) { if (c.textContent.trim() === 'Sin Descanso') c.classList.remove('selected'); }); }
-    var idx = selectedDays.indexOf(day);
-    if (idx === -1) {
-      selectedDays.push(day);
-      btn.classList.add('selected');
-    } else {
-      selectedDays.splice(idx, 1);
-      btn.classList.remove('selected');
-    }
+    selectedDays.splice(idx, 1);
+    btn.classList.remove('selected');
   }
 }
 
@@ -801,22 +788,11 @@ function deleteRecord(uid) {
 }
 
 function updateStats() {
-  var now = new Date();
-  var isAfter11PM = now.getHours() >= 23;
-  var tomorrow = new Date(now);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  var tomorrowStr = tomorrow.getFullYear() + '-' + String(tomorrow.getMonth()+1).padStart(2,'0') + '-' + String(tomorrow.getDate()).padStart(2,'0');
-  var visibleRecords = records;
-  if (isAfter11PM) {
-    visibleRecords = records.filter(function(r) {
-      return r.fechaInicio >= tomorrowStr || r.fechaFin === 'INDEFINIDO';
-    });
-  }
-  var d = visibleRecords.filter(function(r) { return r.tipo === 'Descanso'; }).length;
-  var s = visibleRecords.filter(function(r) { return r.tipo === 'Suspensión'; }).length;
-  var a = visibleRecords.filter(function(r) { return r.tipo === 'Activación'; }).length;
-  var cd = visibleRecords.filter(function(r) { return r.tipo === 'Cambio Días'; }).length;
-  document.getElementById('statTotal').textContent = visibleRecords.length;
+  var d = records.filter(function(r) { return r.tipo === 'Descanso'; }).length;
+  var s = records.filter(function(r) { return r.tipo === 'Suspensión'; }).length;
+  var a = records.filter(function(r) { return r.tipo === 'Activación'; }).length;
+  var cd = records.filter(function(r) { return r.tipo === 'Cambio Días'; }).length;
+  document.getElementById('statTotal').textContent = records.length;
   document.getElementById('statDescanso').textContent = d;
   document.getElementById('statSuspension').textContent = s;
   document.getElementById('statActivacion').textContent = a;
@@ -839,20 +815,7 @@ function sortBy(field) {
 
 function getFiltered() {
   var search = document.getElementById('searchInput').value.toLowerCase();
-  var now = new Date();
-  var isAfter11PM = now.getHours() >= 23;
-  var todayStr = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
-  // Get tomorrow's date string for comparison
-  var tomorrow = new Date(now);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-  var tomorrowStr = tomorrow.getFullYear() + '-' + String(tomorrow.getMonth()+1).padStart(2,'0') + '-' + String(tomorrow.getDate()).padStart(2,'0');
   return records
-    .filter(function(r) {
-      // After 11 PM, hide records whose fechaInicio is today or earlier (they're "done")
-      // Keep records with fechaInicio tomorrow or later (future adjustments)
-      if (!isAfter11PM) return true;
-      return r.fechaInicio >= tomorrowStr || r.fechaFin === 'INDEFINIDO';
-    })
     .filter(function(r) { return activeFilter === 'Todos' || r.tipo === activeFilter; })
     .filter(function(r) {
       return !search || r.idRepartidor.toLowerCase().indexOf(search) !== -1
@@ -887,7 +850,7 @@ function renderTable() {
       '<td style="white-space:nowrap;">' + (r.fechaFin||'—') + '</td>' +
       '<td>' + r.motivo + (r.diasDescanso ? '<br><span style="font-size:11px;color:#7B61FF;font-weight:600;">' + r.diasDescanso + '</span>' : '') + '</td>' +
             '<td style="color:var(--color-text-muted);font-size:12px;">' + (r.registradoPor||'—') + '</td>' +
-      '<td>' + ((r.registradoPor === sessionUser || r.registradoLogin === sessionLogin || sessionLogin === OWNER_LOGIN) ? '<button class="btn-delete" onclick="deleteRecord(\'' + r.uid + '\')" title="Eliminar"><i class="fa-solid fa-trash-can"></i></button>' : '—') + '</td></tr>';
+      '<td>' + ((r.registradoPor === sessionUser || r.registradoLogin === sessionLogin) ? '<button class="btn-delete" onclick="deleteRecord(\'' + r.uid + '\')" title="Eliminar"><i class="fa-solid fa-trash-can"></i></button>' : '<span style="color:#ccc;font-size:11px;">—</span>') + '</td></tr>';
   }).join('');
 }
 
@@ -900,9 +863,9 @@ function exportCSV() {
     return [ts, r.tipo||'', r.estacion||'', r.idRepartidor||'', r.nombre||'', r.fechaInicio||'', r.fechaFin||'', r.motivo||'', r.diasDescanso||'', r.registradoPor||'', r.registradoLogin||'', r.comentarios||r.observaciones||''];
   });
   var csvContent = '\uFEFF';
-  csvContent += h.map(function(c) { return String.fromCharCode(34) + String(c).replace(new RegExp(String.fromCharCode(34), 'g'), String.fromCharCode(34,34)) + String.fromCharCode(34); }).join(',') + '\n';
+  csvContent += h.map(function(c) { return '"' + String(c).replace(/"/g,'""') + '"'; }).join(',') + '\n';
   rows.forEach(function(row) {
-    csvContent += row.map(function(c) { return String.fromCharCode(34) + String(c).replace(new RegExp(String.fromCharCode(34), 'g'), String.fromCharCode(34,34)) + String.fromCharCode(34); }).join(',') + '\n';
+    csvContent += row.map(function(c) { return '"' + String(c).replace(/"/g,'""') + '"'; }).join(',') + '\n';
   });
   var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   var url = URL.createObjectURL(blob);
@@ -942,7 +905,8 @@ function switchTab(tab) {
 }
 
 // Operators list
-var OPERATORS = [{"name": "Abigail Santiago", "login": "mdianr"}, {"name": "Adan Valencia", "login": "adanberm"}, {"name": "Alberto Rubio", "login": "joalheru"}, {"name": "Alejandro Canseco", "login": "njocontr"}, {"name": "Andres Mendez", "login": "mebandre"}, {"name": "Angel Chavez", "login": "avelazqz"}, {"name": "Azucena Ramirez", "login": "huemria"}, {"name": "Carlos Villavicencio", "login": "villacaj"}, {"name": "Cesar Raudales", "login": "craudale"}, {"name": "Christoper Bocanegra", "login": "bocachri"}, {"name": "Claudia Celis", "login": "claucel"}, {"name": "Cristina Soriano", "login": "crzznmc"}, {"name": "Diana Vazquez", "login": "vazquekd"}, {"name": "Enrique Villalobos", "login": "flresao"}, {"name": "Erik Ramirez", "login": "erikdara"}, {"name": "Estefania Bringas", "login": "briestef"}, {"name": "Felipe Bartolo", "login": "fgilbart"}, {"name": "Gabriel Dorantes", "login": "dogabrif"}, {"name": "Gabriel Lopez", "login": "clopezsi"}, {"name": "Gerardo Chavez", "login": "chgerary"}, {"name": "Gerardo Palafox", "login": "lgerardp"}, {"name": "Gustavo Cordero", "login": "gucorte"}, {"name": "Jaime Gonzalez", "login": "jaisgonz"}, {"name": "Janeth Galas", "login": "galasjac"}, {"name": "Jonathan Valdez", "login": "jrvr"}, {"name": "Jorge Cortes", "login": "vjorgeis"}, {"name": "Jose Cundapi", "login": "cundagjo"}, {"name": "Jose Efren Jimenez", "login": "ajvlasc"}, {"name": "Jose Luis Delgado", "login": "jopani"}, {"name": "Juan Lopez", "login": "lopjuanp"}, {"name": "Leonardo de la Vega", "login": "bolaleon"}, {"name": "Luis Juarez", "login": "ujuarezl"}, {"name": "Luis Marquillo", "login": "marqluij"}, {"name": "Maribel Dominguez", "login": "tmaribdo"}, {"name": "María Elena Hernández", "login": "mllmu"}, {"name": "Neidi Gonzalez", "login": "martneid"}, {"name": "Norma Bautista", "login": "romenor"}, {"name": "Omar Ruiz", "login": "gonmoma"}, {"name": "Robert Garcia", "login": "robgarcf"}, {"name": "Roberto Samano", "login": "samanogr"}, {"name": "Rodolfo Patiño", "login": "sanrdl"}, {"name": "Samuel Dorantes", "login": "dorantsa"}, {"name": "Saul Urzua", "login": "sauurzua"}];
+var OPERATORS = [{"name": "Abigail Santiago", "login": "mdianr"}, {"name": "Adan Valencia", "login": "adanberm"}, {"name": "Alberto Rubio", "login": "joalheru"}, {"name": "Alejandro Canseco", "login": "njocontr"}, {"name": "Andres Mendez", "login": "mebandre"}, {"name": "Azucena Ramirez", "login": "huemria"}, {"name": "Carlos Villavicencio", "login": "villacaj"}, {"name": "Cesar Raudales", "login": "craudale"}, {"name": "Christoper Bocanegra", "login": "bocachri"}, {"name": "Claudia Celis", "login": "claucel"}, {"name": "Cristina Soriano", "login": "crzznmc"}, {"name": "Diana Vazquez", "login": "vazquekd"}, {"name": "Enrique Villalobos", "login": "flresao"}, {"name": "Erik Ramirez", "login": "erikdara"}, {"name": "Estefania Bringas", "login": "briestef"}, {"name": "Felipe Bartolo", "login": "fgilbart"}, {"name": "Gabriel Dorantes", "login": "dogabrif"}, {"name": "Gabriel Lopez", "login": "clopezsi"}, {"name": "Gerardo Chavez", "login": "chgerary"}, {"name": "Gerardo Palafox", "login": "lgerardp"}, {"name": "Gustavo Cordero", "login": "gucorte"}, {"name": "Jaime Gonzalez", "login": "jaisgonz"}, {"name": "Janeth Galas", "login": "galasjac"}, {"name": "Jonathan Valdez", "login": "jrvr"}, {"name": "Jorge Cortes", "login": "vjorgeis"}, {"name": "Jose Cundapi", "login": "cundagjo"}, {"name": "Jose Efren Jimenez", "login": "ajvlasc"}, {"name": "Jose Luis Delgado", "login": "jopani"}, {"name": "Juan Lopez", "login": "lopjuanp"}, {"name": "Leonardo de la Vega", "login": "bolaleon"}, {"name": "Luis Juarez", "login": "ujuarezl"}, {"name": "Luis Marquillo", "login": "marqluij"}, {"name": "Maribel Dominguez", "login": "tmaribdo"}, {"name": "María Elena Hernández", "login": "mllmu"}, {"name": "Neidi Gonzalez", "login": "martneid"}, {"name": "Norma Bautista", "login": "romenor"}, {"name": "Omar Ruiz", "login": "gonmoma"}, {"name": "Robert Garcia", "login": "robgarcf"}, {"name": "Roberto Samano", "login": "samanogr"}, {"name": "Rodolfo Patiño", "login": "sanrdl"}, {"name": "Samuel Dorantes", "login": "dorantsa"}, {"name": "Saul Urzua", "login": "sauurzua"}];
+
 // Session user
 var sessionUser = '';
 var sessionLogin = '';
@@ -1007,10 +971,10 @@ function autoCleanup() {
 }
 
 // Init
-try { updateStats(); renderTable(); } catch(ei) {}
-try { loadRecords(); } catch(ei) {}
+updateStats(); renderTable();
+loadRecords();
 // Auto-refresh every 30 seconds
-try { setInterval(function() { try { if (API_URL !== 'PEGA_TU_URL_AQUI') loadRecords(); } catch(ei2) {} }, 30000); } catch(ei) {}
+setInterval(function() { if (API_URL !== 'PEGA_TU_URL_AQUI') loadRecords(); }, 30000);
 try {
   var now = new Date();
   var daysAhead = (now.getHours() >= 16 && now.getMinutes() >= 30) || now.getHours() >= 17 ? 2 : 1;
