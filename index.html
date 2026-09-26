@@ -228,6 +228,11 @@
   <div class="stat-card cambio_dias"><div class="stat-icon"><i class="fa-solid fa-calendar-days"></i></div><div class="stat-value" id="statCambioDias">0</div><div class="stat-label">Cambio Días</div></div>
 </div>
 
+
+<div style="background:#E3F2FD;border:1px solid #90CAF9;border-radius:10px;padding:10px 16px;margin:8px 0 4px 0;display:flex;align-items:flex-start;gap:8px;font-size:13px;color:#1565C0;line-height:1.5;">
+  <i class="fa-solid fa-circle-info" style="margin-top:2px;flex-shrink:0;"></i>
+  <span><strong>Horarios de corte:</strong> Las <strong>Activaciones</strong> registradas después de las <strong>4:30 PM</strong> y los demás ajustes registrados después de las <strong>6:30 PM</strong> requieren fecha de <strong>2 días en adelante</strong>. Antes de ese horario, la fecha mínima es el día siguiente.</span>
+</div>
 <div class="tabs">
   <button class="tab active" onclick="switchTab('form')"><i class="fa-solid fa-plus"></i> Nuevo Registro</button>
   <button class="tab" onclick="switchTab('table')"><i class="fa-solid fa-table"></i> Registros (<span id="tabCount">0</span>)</button>
@@ -463,6 +468,22 @@ var selectedReps = [];
   selectedDays = [];
   document.querySelectorAll('.day-chip').forEach(function(c) { c.classList.remove('selected'); });  // array of {id, name, station}
 
+function updateMinDate() {
+  var now = new Date();
+  var daysAhead;
+  if (selectedType === 'Activación') {
+    daysAhead = (now.getHours() >= 16 && now.getMinutes() >= 30) || now.getHours() >= 17 ? 2 : 1;
+  } else {
+    daysAhead = (now.getHours() >= 18 && now.getMinutes() >= 30) || now.getHours() >= 19 ? 2 : 1;
+  }
+  var minDateObj = new Date(now);
+  minDateObj.setDate(minDateObj.getDate() + daysAhead);
+  var minStr = minDateObj.getFullYear() + '-' + String(minDateObj.getMonth()+1).padStart(2,'0') + '-' + String(minDateObj.getDate()).padStart(2,'0');
+  document.getElementById('inputFechaInicio').setAttribute('min', minStr);
+  document.getElementById('inputFechaInicio').value = minStr;
+  document.getElementById('inputFechaFin').setAttribute('min', minStr);
+}
+
 function selectType(type) {
   selectedType = type;
   selectedDuration = '';
@@ -521,6 +542,7 @@ function selectType(type) {
       document.getElementById('daySelectRow').classList.add('hidden');
     }
   }
+  updateMinDate();
   updateSubmitBtn();
 }
 
@@ -800,13 +822,13 @@ function deleteRecord(uid) {
 
 function updateStats() {
   var visibleRecords = records;
-  // After 11 PM, stats reflect only future records (visual only)
+  // After 11 PM, stats reflect only records 2+ days ahead (visual only)
   if (new Date().getHours() >= 23) {
-    var tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    var tomorrowStr = tomorrow.toISOString().slice(0, 10);
+    var dayAfterTomorrow = new Date();
+    dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
+    var datStr = dayAfterTomorrow.toISOString().slice(0, 10);
     visibleRecords = records.filter(function(r) {
-      return r.fechaFin === 'INDEFINIDO' || (r.fechaInicio && r.fechaInicio >= tomorrowStr);
+      return r.fechaFin === 'INDEFINIDO' || (r.fechaInicio && r.fechaInicio >= datStr);
     });
   }
   var d = visibleRecords.filter(function(r) { return r.tipo === 'Descanso'; }).length;
@@ -847,13 +869,13 @@ function getFiltered() {
       var av = a[sortField] || '', bv = b[sortField] || '';
       return av < bv ? -sortDir : av > bv ? sortDir : 0;
     });
-  // After 11 PM, hide records whose fechaInicio is today or earlier (visual only)
+  // After 11 PM, hide records for tomorrow or earlier (visual only — data stays in Google Sheets)
   if (new Date().getHours() >= 23) {
-    var tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    var tomorrowStr = tomorrow.toISOString().slice(0, 10);
+    var dayAfterTomorrow = new Date();
+    dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
+    var datStr = dayAfterTomorrow.toISOString().slice(0, 10);
     result = result.filter(function(r) {
-      return r.fechaFin === 'INDEFINIDO' || (r.fechaInicio && r.fechaInicio >= tomorrowStr);
+      return r.fechaFin === 'INDEFINIDO' || (r.fechaInicio && r.fechaInicio >= datStr);
     });
   }
   return result;
@@ -871,7 +893,12 @@ function renderTable() {
     var ts = new Date(r.timestamp);
     var ds = ts.toLocaleDateString('es-MX', { day:'2-digit', month:'short', year:'numeric' });
     var tm = ts.toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' });
-    return '<tr>' +
+    var _now = new Date();
+    var _tomorrow = new Date(_now); _tomorrow.setDate(_tomorrow.getDate() + 1);
+    var _tomorrowStr = _tomorrow.toISOString().slice(0, 10);
+    var isFuture = r.fechaInicio && r.fechaInicio > _tomorrowStr;
+    var rowStyle = isFuture ? ' style="background-color:#FFF8E1;"' : '';
+    return '<tr' + rowStyle + '>' +
       '<td style="white-space:nowrap;font-family:var(--font-mono);font-size:12px;">' + ds + ' ' + tm + '</td>' +
       '<td><span class="badge ' + bc[r.tipo] + '"><i class="fa-solid ' + bi[r.tipo] + '"></i> ' + r.tipo + '</span></td>' +
       '<td style="font-family:var(--font-mono);font-weight:600;">' + (r.estacion||'—') + '</td>' +
@@ -1006,16 +1033,7 @@ updateStats(); renderTable();
 loadRecords();
 // Auto-refresh every 30 seconds
 setInterval(function() { if (API_URL !== 'PEGA_TU_URL_AQUI') loadRecords(); }, 30000);
-try {
-  var now = new Date();
-  var daysAhead = (now.getHours() >= 16 && now.getMinutes() >= 30) || now.getHours() >= 17 ? 2 : 1;
-  var minDateObj = new Date(now);
-  minDateObj.setDate(minDateObj.getDate() + daysAhead);
-  var minDate = minDateObj.getFullYear() + '-' + String(minDateObj.getMonth()+1).padStart(2,'0') + '-' + String(minDateObj.getDate()).padStart(2,'0');
-  document.getElementById('inputFechaInicio').setAttribute('min', minDate);
-  document.getElementById('inputFechaFin').setAttribute('min', minDate);
-  document.getElementById('inputFechaInicio').value = minDate;
-} catch(e) {}
+try { updateMinDate(); } catch(e) {}
 </script>
 
 </body></html>
