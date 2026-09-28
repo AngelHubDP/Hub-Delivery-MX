@@ -543,12 +543,12 @@ function selectType(type) {
     }
   }
   updateMinDate();
-  // Check if any already-selected reps have duplicate adjustments for this type
+  // Check if any already-selected reps have any existing adjustments
   selectedReps.forEach(function(rep) {
-    var existing = records.find(function(r) { return r.idRepartidor === rep.id && r.tipo === type; });
+    var existing = records.find(function(r) { return r.idRepartidor === rep.id; });
     if (existing) {
       var regPor = existing.registradoPor || existing.registradoLogin || 'otro operador';
-      showDuplicateWarning(rep.name, type, existing.fechaInicio, existing.fechaFin ? ' al ' + existing.fechaFin : '', regPor);
+      showDuplicateWarning(rep.name, existing.tipo, existing.fechaInicio, existing.fechaFin ? ' al ' + existing.fechaFin : '', regPor);
     }
   });
   updateSubmitBtn();
@@ -612,15 +612,13 @@ function addSelectedRep() {
     document.getElementById('inputNombre').value = '';
     return;
   }
-  // Check if repartidor already has the SAME type of adjustment
-  if (selectedType) {
-    var sameTypeRecord = records.find(function(r) { return r.idRepartidor === pendingRep.id && r.tipo === selectedType; });
-    if (sameTypeRecord) {
-      var fechaExistente = sameTypeRecord.fechaInicio;
-      var fechaFinTxt = sameTypeRecord.fechaFin ? ' al ' + sameTypeRecord.fechaFin : '';
-      var regPor = sameTypeRecord.registradoPor || sameTypeRecord.registradoLogin || 'otro operador';
-      showDuplicateWarning(pendingRep.name, sameTypeRecord.tipo, fechaExistente, fechaFinTxt, regPor);
-    }
+  // Check if repartidor already has ANY adjustment registered
+  var existingRecord = records.find(function(r) { return r.idRepartidor === pendingRep.id; });
+  if (existingRecord) {
+    var fechaExistente = existingRecord.fechaInicio;
+    var fechaFinTxt = existingRecord.fechaFin ? ' al ' + existingRecord.fechaFin : '';
+    var regPor = existingRecord.registradoPor || existingRecord.registradoLogin || 'otro operador';
+    showDuplicateWarning(pendingRep.name, existingRecord.tipo, fechaExistente, fechaFinTxt, regPor);
   }
   selectedReps.push({ id: pendingRep.id, name: pendingRep.name, station: pendingRep.station });
   pendingRep = null;
