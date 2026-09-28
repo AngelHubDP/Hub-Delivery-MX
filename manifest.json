@@ -1,0 +1,15 @@
+{
+name: "Hub Delivery — Control de Ajustes"
+short_name: "Hub Delivery"
+description: "Control de ajustes para vecinos repartidores"
+start_url: "/Hub-Delivery-MX/"
+scope: "/Hub-Delivery-MX/"
+display: "standalone"
+background_color: "#f4f5f7"
+theme_color: "#0052cc"
+orientation: "any"
+icons: [
+0: {...}
+1: {...}
+]
+}
