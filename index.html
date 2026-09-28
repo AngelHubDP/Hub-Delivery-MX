@@ -545,7 +545,7 @@ function selectType(type) {
   updateMinDate();
   // Check if any already-selected reps have any existing adjustments
   selectedReps.forEach(function(rep) {
-    var existing = records.find(function(r) { return r.idRepartidor === rep.id; });
+    var existing = records.find(function(r) { return String(r.idRepartidor) === String(rep.id); });
     if (existing) {
       var regPor = existing.registradoPor || existing.registradoLogin || 'otro operador';
       showDuplicateWarning(rep.name, existing.tipo, existing.fechaInicio, existing.fechaFin ? ' al ' + existing.fechaFin : '', regPor);
@@ -613,7 +613,7 @@ function addSelectedRep() {
     return;
   }
   // Check if repartidor already has ANY adjustment registered
-  var existingRecord = records.find(function(r) { return r.idRepartidor === pendingRep.id; });
+  var existingRecord = records.find(function(r) { return String(r.idRepartidor) === String(pendingRep.id); });
   if (existingRecord) {
     var fechaExistente = existingRecord.fechaInicio;
     var fechaFinTxt = existingRecord.fechaFin ? ' al ' + existingRecord.fechaFin : '';
