@@ -548,7 +548,7 @@ function selectType(type) {
     var existing = records.find(function(r) { return String(r.idRepartidor) === String(rep.id); });
     if (existing) {
       var regPor = existing.registradoPor || existing.registradoLogin || 'otro operador';
-      showDuplicateWarning(rep.name, existing.tipo, existing.fechaInicio, existing.fechaFin ? ' al ' + existing.fechaFin : '', regPor);
+      showDuplicateWarning(rep.name, existing.tipo, formatDateShort(existing.fechaInicio), existing.fechaFin ? ' al ' + formatDateShort(existing.fechaFin) : '', regPor);
     }
   });
   updateSubmitBtn();
@@ -615,8 +615,8 @@ function addSelectedRep() {
   // Check if repartidor already has ANY adjustment registered
   var existingRecord = records.find(function(r) { return String(r.idRepartidor) === String(pendingRep.id); });
   if (existingRecord) {
-    var fechaExistente = existingRecord.fechaInicio;
-    var fechaFinTxt = existingRecord.fechaFin ? ' al ' + existingRecord.fechaFin : '';
+    var fechaExistente = formatDateShort(existingRecord.fechaInicio);
+    var fechaFinTxt = existingRecord.fechaFin ? ' al ' + formatDateShort(existingRecord.fechaFin) : '';
     var regPor = existingRecord.registradoPor || existingRecord.registradoLogin || 'otro operador';
     showDuplicateWarning(pendingRep.name, existingRecord.tipo, fechaExistente, fechaFinTxt, regPor);
   }
