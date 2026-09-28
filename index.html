@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="es"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Hub Delivery — Control de Estatus v4</title>
+<title>Hub Delivery — Control de Ajustes v4</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <style>
   :root {
@@ -206,7 +206,7 @@
   <div style="margin-bottom:12px;">
     <img src="https://upload.wikimedia.org/wikipedia/commons/a/a9/Amazon_logo.svg" alt="Amazon" style="height:32px;">
   </div>
-  <h1><i class="fa-solid fa-truck-fast"></i> Control de Estatus</h1>
+  <h1><i class="fa-solid fa-truck-fast"></i> Control de Ajustes</h1>
   <p>Registro de descansos, suspensiones y activaciones de vecinos repartidores</p>
   <div style="margin-top:8px;">
     <span class="session-user" id="sessionUserBadge" style="display:none;" title="Sesión del día">
@@ -359,7 +359,7 @@
   </div>
 </div>
 
-<div class="footer">Hub Delivery — Control de Estatus v4.1 · Datos sincronizados con Google Sheets <i class="fa-solid fa-cloud"></i></div>
+<div class="footer">Hub Delivery — Control de Ajustes v4.1 · Datos sincronizados con Google Sheets <i class="fa-solid fa-cloud"></i></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -912,7 +912,7 @@ function renderTable() {
     var tm = ts.toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' });
     var dupKey = r.idRepartidor + '|' + r.tipo;
     var isDup = dupMap[dupKey] && dupMap[dupKey].length > 1;
-    var dupBadge = isDup ? '<span style="display:inline-block;background:#EF5350;color:#fff;font-size:9px;padding:1px 5px;border-radius:3px;margin-left:4px;font-weight:600;" title="Múltiples operadores registraron este mismo ajuste: ' + dupMap[dupKey].join(', ') + '">⚠️ DUPLICADO</span>' : '';
+    var dupBadge = isDup ? '<br><span style="color:#EF5350;font-size:9px;font-weight:700;" title="Múltiples operadores registraron este mismo ajuste: ' + dupMap[dupKey].join(', ') + '">⚠️ DUPLICADO</span>' : '';
     var _now = new Date();
     var _tomorrow = new Date(_now); _tomorrow.setDate(_tomorrow.getDate() + 1);
     var _tomorrowStr = _tomorrow.toISOString().slice(0, 10);
@@ -924,7 +924,7 @@ function renderTable() {
       '<td style="font-family:var(--font-mono);font-weight:600;">' + (r.estacion||'—') + '</td>' +
       '<td style="font-family:var(--font-mono);">' + r.idRepartidor + '</td>' +
       '<td>' + r.nombre + dupBadge + '</td>' +
-      '<td style="white-space:nowrap;">' + (isFuture ? '<span style="display:inline-block;background:#FF8F00;color:#fff;font-size:10px;padding:1px 6px;border-radius:4px;margin-bottom:2px;font-weight:600;">\ud83d\udcc5 Fecha Futura</span><br>' : '') + formatDateShort(r.fechaInicio) + '</td>' +
+      '<td style="white-space:nowrap;">' + (isFuture ? '<span style="color:#FF8F00;font-size:9px;font-weight:700;letter-spacing:0.3px;">FECHA FUTURA</span><br>' : '') + formatDateShort(r.fechaInicio) + '</td>' +
       '<td style="white-space:nowrap;">' + formatDateShort(r.fechaFin) + '</td>' +
       '<td>' + r.motivo + (r.diasDescanso ? '<br><span style="font-size:11px;color:#7B61FF;font-weight:600;">' + r.diasDescanso + '</span>' : '') + '</td>' +
             '<td style="color:var(--color-text-muted);font-size:12px;">' + (r.registradoPor||'—') + '</td>' +
