@@ -610,10 +610,8 @@ function addSelectedRep() {
     if (sameTypeRecord) {
       var fechaExistente = sameTypeRecord.fechaInicio;
       var fechaFinTxt = sameTypeRecord.fechaFin ? ' al ' + sameTypeRecord.fechaFin : '';
-      showDuplicateAlert(pendingRep.name, sameTypeRecord.tipo, fechaExistente, fechaFinTxt);
-      pendingRep = null;
-      document.getElementById('inputNombre').value = '';
-      return;
+      var regPor = sameTypeRecord.registradoPor || sameTypeRecord.registradoLogin || 'otro operador';
+      showDuplicateWarning(pendingRep.name, sameTypeRecord.tipo, fechaExistente, fechaFinTxt, regPor);
     }
   }
   selectedReps.push({ id: pendingRep.id, name: pendingRep.name, station: pendingRep.station });
@@ -697,22 +695,17 @@ function toggleIndefinido() {
   }
 }
 
-function showDuplicateAlert(name, tipo, fecha, fechaFin) {
-  // Remove any previous alert
+function showDuplicateWarning(name, tipo, fecha, fechaFin, regPor) {
   var prev = document.getElementById('dupAlert');
   if (prev) prev.remove();
   var alert = document.createElement('div');
   alert.id = 'dupAlert';
-  alert.className = 'alert-banner error';
-  alert.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i> ' +
-    '<div><strong>BLOQUEADO:</strong> ' + name + ' ya tiene un ajuste activo ' +
-    '(<strong>' + tipo + '</strong> del ' + fecha + fechaFin + '). ' +
-    'No se puede registrar otro ajuste para este repartidor.</div>';
-  // Insert after the reps list
+  alert.style.cssText = 'background:#FFF3E0;border-left:4px solid #FF8F00;padding:10px 14px;border-radius:6px;margin:8px 0;display:flex;align-items:flex-start;gap:8px;font-size:13px;color:#E65100;';
+  alert.innerHTML = '<i class="fa-solid fa-triangle-exclamation" style="margin-top:2px;"></i> ' +
+    '<div><strong>ATENCIÓN:</strong> ' + name + ' ya tiene un ajuste de <strong>' + tipo + '</strong> (del ' + fecha + fechaFin + ') registrado por <strong>' + regPor + '</strong>. Se agregará de todas formas.</div>';
   var repsList = document.getElementById('repsCount');
   repsList.parentNode.insertBefore(alert, repsList.nextSibling);
-  // Auto-remove after 8 seconds
-  setTimeout(function() { var el = document.getElementById('dupAlert'); if (el) el.remove(); }, 8000);
+  setTimeout(function() { var el = document.getElementById('dupAlert'); if (el) el.remove(); }, 10000);
 }
 
 function showToast(msg, isError) {
@@ -912,7 +905,7 @@ function renderTable() {
     var tm = ts.toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' });
     var dupKey = r.idRepartidor + '|' + r.tipo;
     var isDup = dupMap[dupKey] && dupMap[dupKey].length > 1;
-    var dupBadge = isDup ? '<br><span style="color:#EF5350;font-size:9px;font-weight:700;" title="Múltiples operadores registraron este mismo ajuste: ' + dupMap[dupKey].join(', ') + '">⚠️ DUPLICADO</span>' : '';
+    var dupBadge = isDup ? '<br><span style="color:#EF5350;font-size:9px;font-weight:700;" title="Múltiples operadores registraron este mismo ajuste: ' + dupMap[dupKey].join(', ') + '">DUPLICADO</span>' : '';
     var _now = new Date();
     var _tomorrow = new Date(_now); _tomorrow.setDate(_tomorrow.getDate() + 1);
     var _tomorrowStr = _tomorrow.toISOString().slice(0, 10);
