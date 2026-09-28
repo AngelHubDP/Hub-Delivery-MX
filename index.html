@@ -543,6 +543,14 @@ function selectType(type) {
     }
   }
   updateMinDate();
+  // Check if any already-selected reps have duplicate adjustments for this type
+  selectedReps.forEach(function(rep) {
+    var existing = records.find(function(r) { return r.idRepartidor === rep.id && r.tipo === type; });
+    if (existing) {
+      var regPor = existing.registradoPor || existing.registradoLogin || 'otro operador';
+      showDuplicateWarning(rep.name, type, existing.fechaInicio, existing.fechaFin ? ' al ' + existing.fechaFin : '', regPor);
+    }
+  });
   updateSubmitBtn();
 }
 
@@ -700,12 +708,17 @@ function showDuplicateWarning(name, tipo, fecha, fechaFin, regPor) {
   if (prev) prev.remove();
   var alert = document.createElement('div');
   alert.id = 'dupAlert';
-  alert.style.cssText = 'background:#FFF3E0;border-left:4px solid #FF8F00;padding:10px 14px;border-radius:6px;margin:8px 0;display:flex;align-items:flex-start;gap:8px;font-size:13px;color:#E65100;';
-  alert.innerHTML = '<i class="fa-solid fa-triangle-exclamation" style="margin-top:2px;"></i> ' +
-    '<div><strong>ATENCIÓN:</strong> ' + name + ' ya tiene un ajuste de <strong>' + tipo + '</strong> (del ' + fecha + fechaFin + ') registrado por <strong>' + regPor + '</strong>. Se agregará de todas formas.</div>';
-  var repsList = document.getElementById('repsCount');
-  repsList.parentNode.insertBefore(alert, repsList.nextSibling);
-  setTimeout(function() { var el = document.getElementById('dupAlert'); if (el) el.remove(); }, 10000);
+  alert.style.cssText = 'background:#FFF3E0;border:2px solid #FF8F00;padding:12px 16px;border-radius:8px;margin:12px 0;display:flex;align-items:flex-start;gap:10px;font-size:14px;color:#E65100;box-shadow:0 2px 8px rgba(255,143,0,0.2);';
+  alert.innerHTML = '<i class="fa-solid fa-triangle-exclamation" style="font-size:18px;margin-top:1px;"></i> ' +
+    '<div><strong>⚠️ ATENCIÓN:</strong> <strong>' + name + '</strong> ya tiene un ajuste de <strong>' + tipo + '</strong> (del ' + fecha + fechaFin + ') registrado por <strong>' + regPor + '</strong>.<br><span style="font-size:12px;color:#BF360C;">El registro se permitirá de todas formas, pero quedará marcado como DUPLICADO.</span></div>';
+  // Insert at the top of the form section for maximum visibility
+  var formSection = document.querySelector('.card') || document.getElementById('repsList') || document.getElementById('repsCount');
+  if (formSection && formSection.parentNode) {
+    formSection.parentNode.insertBefore(alert, formSection);
+  }
+  // Scroll to the alert
+  alert.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  setTimeout(function() { var el = document.getElementById('dupAlert'); if (el) el.remove(); }, 15000);
 }
 
 function showToast(msg, isError) {
