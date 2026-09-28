@@ -1,6 +1,13 @@
 <!DOCTYPE html>
 <html lang="es"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0052cc">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Hub Delivery">
+<link rel="apple-touch-icon" href="icon-192.png">
+
 <title>Hub Delivery — Control de Ajustes v4</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <style>
@@ -1056,6 +1063,17 @@ loadRecords();
 // Auto-refresh every 30 seconds
 setInterval(function() { if (API_URL !== 'PEGA_TU_URL_AQUI') loadRecords(); }, 30000);
 try { updateMinDate(); } catch(e) {}
+
+  // PWA Service Worker Registration
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+      navigator.serviceWorker.register('sw.js').then(function(reg) {
+        console.log('SW registered:', reg.scope);
+      }).catch(function(err) {
+        console.log('SW registration failed:', err);
+      });
+    });
+  }
 </script>
 
 </body></html>
