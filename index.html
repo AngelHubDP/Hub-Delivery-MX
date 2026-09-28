@@ -706,16 +706,14 @@ function showDuplicateWarning(name, tipo, fecha, fechaFin, regPor) {
   if (prev) prev.remove();
   var alert = document.createElement('div');
   alert.id = 'dupAlert';
-  alert.style.cssText = 'background:#FFF3E0;border:2px solid #FF8F00;padding:12px 16px;border-radius:8px;margin:12px 0;display:flex;align-items:flex-start;gap:10px;font-size:14px;color:#E65100;box-shadow:0 2px 8px rgba(255,143,0,0.2);';
-  alert.innerHTML = '<i class="fa-solid fa-triangle-exclamation" style="font-size:18px;margin-top:1px;"></i> ' +
-    '<div><strong>⚠️ ATENCIÓN:</strong> <strong>' + name + '</strong> ya tiene un ajuste de <strong>' + tipo + '</strong> (del ' + fecha + fechaFin + ') registrado por <strong>' + regPor + '</strong>.<br><span style="font-size:12px;color:#BF360C;">El registro se permitirá de todas formas, pero quedará marcado como DUPLICADO.</span></div>';
-  // Insert at the top of the form section for maximum visibility
-  var formSection = document.querySelector('.card') || document.getElementById('repsList') || document.getElementById('repsCount');
-  if (formSection && formSection.parentNode) {
-    formSection.parentNode.insertBefore(alert, formSection);
+  alert.style.cssText = 'background:#FFF3E0;border:2px solid #FF8F00;padding:12px 16px;border-radius:8px;margin:12px 0 4px 0;display:flex;align-items:flex-start;gap:10px;font-size:14px;color:#E65100;box-shadow:0 2px 8px rgba(255,143,0,0.15);';
+  alert.innerHTML = '<i class="fa-solid fa-triangle-exclamation" style="font-size:18px;margin-top:1px;flex-shrink:0;"></i> ' +
+    '<div><strong>ATENCIÓN:</strong> <strong>' + name + '</strong> ya tiene un ajuste de <strong>' + tipo + '</strong> (del ' + fecha + fechaFin + ') registrado por <strong>' + regPor + '</strong>.<br><span style="font-size:12px;color:#BF360C;">El registro se permitirá, pero quedará marcado como DUPLICADO.</span></div>';
+  var anchor = document.getElementById('repsCount');
+  if (anchor && anchor.parentNode) {
+    anchor.parentNode.insertBefore(alert, anchor.nextSibling);
   }
-  // Scroll to the alert
-  alert.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  alert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   setTimeout(function() { var el = document.getElementById('dupAlert'); if (el) el.remove(); }, 15000);
 }
 
