@@ -813,17 +813,18 @@ function submitAll() {
     newRecords.push(rec);
   });
 
-  saveToCloud(newRecords).then(function() {
-    btn.disabled = false;
-    selectedReps = [];
-    renderRepsList();
-    updateSubmitBtn();
-    document.getElementById('inputNombre').value = '';
-    document.getElementById('inputObs').value = '';
-    updateStats();
-    renderTable();
-    showToast('✅ ' + count + ' registro' + (count > 1 ? 's agregados' : ' agregado') + ' correctamente');
-  });
+  // Optimistic: update UI immediately (don't wait for Google Sheets)
+  btn.disabled = false;
+  selectedReps = [];
+  renderRepsList();
+  updateSubmitBtn();
+  document.getElementById('inputNombre').value = '';
+  document.getElementById('inputObs').value = '';
+  updateStats();
+  renderTable();
+  showToast('✅ ' + count + ' registro' + (count > 1 ? 's agregados' : ' agregado') + ' correctamente');
+  // Save to Google Sheets in background
+  saveToCloud(newRecords);
 }
 
 function deleteRecord(uid) {
@@ -1067,7 +1068,7 @@ function autoCleanup() {
 updateStats(); renderTable();
 loadRecords();
 // Auto-refresh every 30 seconds
-setInterval(function() { if (API_URL !== 'PEGA_TU_URL_AQUI') loadRecords(); }, 30000);
+setInterval(function() { if (API_URL !== 'PEGA_TU_URL_AQUI') loadRecords(); }, 90000);
 try { updateMinDate(); } catch(e) {}
 
 
