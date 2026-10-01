@@ -439,6 +439,7 @@ function saveToCloud(newRecords) {
   try { localStorage.setItem('hubDelivery_v4', JSON.stringify(records)); } catch(e) {}
   if (API_URL === 'PEGA_TU_URL_AQUI') { showToast('⚠️ Guardado solo localmente', true); return Promise.resolve(); }
   setSyncStatus('loading', 'Guardando...');
+  // Try POST first
   return fetch(API_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain' },
@@ -446,12 +447,34 @@ function saveToCloud(newRecords) {
   })
   .then(function(r) { return r.json(); })
   .then(function(data) {
-    if (data.success) setSyncStatus('online', 'Conectado · ' + records.length + ' registros sincronizados');
-    else throw new Error(data.error);
+    if (data.success) {
+      setSyncStatus('online', 'Conectado · ' + records.length + ' registros sincronizados');
+    } else {
+      throw new Error(data.error || 'POST failed');
+    }
   })
   .catch(function(err) {
-    setSyncStatus('offline', 'Error al guardar — ' + err.message);
-    showToast('⚠️ Error de conexión. Guardado localmente.', true);
+    // POST failed — fallback to GET (addone) for each record
+    console.log('POST failed, trying GET fallback:', err.message);
+    var promises = newRecords.map(function(rec) {
+      var params = Object.keys(rec).map(function(k) {
+        return encodeURIComponent(k) + '=' + encodeURIComponent(rec[k] || '');
+      }).join('&');
+      return fetch(API_URL + '?action=addone&' + params)
+        .then(function(r) { return r.json(); });
+    });
+    return Promise.all(promises).then(function(results) {
+      var allOk = results.every(function(r) { return r.success; });
+      if (allOk) {
+        setSyncStatus('online', 'Conectado · ' + records.length + ' registros sincronizados');
+      } else {
+        setSyncStatus('offline', 'Error parcial al guardar');
+        showToast('⚠️ Algunos registros no se guardaron', true);
+      }
+    }).catch(function(err2) {
+      setSyncStatus('offline', 'Error al guardar — ' + err2.message);
+      showToast('⚠️ Error de conexión. Guardado localmente.', true);
+    });
   });
 }
 
