@@ -550,9 +550,7 @@ var sortField = 'timestamp';
 var sortDir = -1;
 var pendingRep = null;
 var selectedDays = [];  // currently highlighted in autocomplete
-var selectedReps = [];
-  selectedDays = [];
-  document.querySelectorAll('.day-chip').forEach(function(c) { c.classList.remove('selected'); });  // array of {id, name, station}
+var selectedReps = [];  // array of {id, name, station}
 
 function updateMinDate() {
   var now = new Date();
@@ -970,7 +968,6 @@ function submitAll() {
     }
     selectedDescansoFechas = [];
     renderFechasList();
-  });
   } else {
     selectedReps.forEach(function(rep) {
       var rec = {
