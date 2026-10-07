@@ -875,11 +875,20 @@ function submitAll() {
     fechaInicio = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
     fechaFin = '';
   } else if (selectedType === 'Descanso' && selectedDuration === 'varios') {
-    // Multi-date mode: validate selectedDescansoFechas
-    if (selectedDescansoFechas.length === 0) {
-      showToast('⚠️ Agrega al menos una fecha de descanso', true); return;
+    if (selectedDescansoMode === 'individual') {
+      if (selectedDescansoFechas.length === 0) {
+        showToast('⚠️ Agrega al menos una fecha de descanso', true); return;
+      }
+    } else {
+      var rangoInicio = document.getElementById('inputFechaRangoInicio').value;
+      var rangoFin = document.getElementById('inputFechaRangoFin').value;
+      if (!rangoInicio || !rangoFin) {
+        showToast('⚠️ Selecciona fecha inicio y fin del rango', true); return;
+      }
+      if (rangoFin <= rangoInicio) {
+        showToast('⚠️ La fecha fin debe ser posterior a la fecha inicio', true); return;
+      }
     }
-    // Dates validated individually when added
   } else {
     fechaInicio = document.getElementById('inputFechaInicio').value;
     if (!fechaInicio) { showToast('⚠️ Selecciona la fecha', true); return; }
@@ -1074,7 +1083,10 @@ function getFiltered() {
 function formatDateShort(dateStr) {
   if (!dateStr || dateStr === '—' || dateStr === 'INDEFINIDO') return dateStr || '—';
   try {
-    var d = new Date(dateStr);
+    var str = String(dateStr);
+    // Fix timezone: add T12:00 to avoid UTC rollback to previous day
+    if (/^\d{4}-\d{2}-\d{2}$/.test(str)) str = str + 'T12:00:00';
+    var d = new Date(str);
     if (isNaN(d.getTime())) return dateStr;
     return d.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
   } catch(e) { return dateStr; }
