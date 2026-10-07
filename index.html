@@ -265,8 +265,8 @@
       </div>
       <div class="ac-list" id="acList"></div>
     </div>
-    <div style="text-align:center;margin-top:6px;">
-      <button type="button" id="bulkToggleBtn" onclick="toggleBulkMode()" style="background:none;border:none;color:#0052CC;font-size:12px;cursor:pointer;font-family:inherit;text-decoration:underline;">📋 Carga masiva por ID</button>
+    <div style="text-align:center;margin-top:8px;">
+      <button type="button" id="bulkToggleBtn" onclick="toggleBulkMode()" style="padding:8px 16px;background:var(--color-bg);border:2px solid var(--color-border);border-radius:8px;color:var(--color-text-secondary);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:all 0.15s;">Carga masiva por ID</button>
     </div>
     <div id="bulkInputArea" class="hidden" style="margin-top:8px;">
       <textarea id="bulkIds" placeholder="Pega los STORE IDs aquí (uno por línea o separados por coma)..." rows="4" style="width:100%;padding:10px 12px;border:1px solid var(--color-border);border-radius:8px;font-size:13px;font-family:var(--font-mono);color:var(--color-text);background:var(--color-bg);resize:vertical;"></textarea>
@@ -321,13 +321,32 @@
     </div>
 
     <div id="multiFechasRow" class="hidden">
-      <span class="section-label">Fechas de descanso <span class="req">*</span></span>
-      <div style="display:flex;gap:8px;align-items:center;justify-content:center;">
-        <input type="date" id="inputFechaMulti" style="padding:10px 12px;border:1px solid var(--color-border);border-radius:8px;font-size:14px;font-family:inherit;color:var(--color-text);background:var(--color-bg);">
-        <button type="button" class="ac-add-btn" onclick="addDescansoFecha()" style="padding:10px 16px;"><i class="fa-solid fa-plus"></i> Agregar</button>
+      <span class="section-label">Modo de fechas</span>
+      <div style="display:flex;gap:8px;margin-bottom:12px;justify-content:center;">
+        <button type="button" class="dur-btn active" id="modoFechasInd" onclick="setModoFechas('individual')"><i class="fa-solid fa-calendar-plus"></i> Fechas individuales</button>
+        <button type="button" class="dur-btn" id="modoFechasRango" onclick="setModoFechas('rango')"><i class="fa-solid fa-calendar-week"></i> Rango de fechas</button>
       </div>
-      <div id="fechasList" style="margin-top:8px;text-align:center;"></div>
-      <div id="fechasCount" style="font-size:12px;color:var(--color-text-muted);margin-top:4px;text-align:center;"></div>
+      <div id="fechasIndividualArea">
+        <span class="section-label">Fechas de descanso <span class="req">*</span></span>
+        <div style="display:flex;gap:8px;align-items:center;justify-content:center;">
+          <input type="date" id="inputFechaMulti" style="padding:10px 12px;border:1px solid var(--color-border);border-radius:8px;font-size:14px;font-family:inherit;color:var(--color-text);background:var(--color-bg);">
+          <button type="button" class="ac-add-btn" onclick="addDescansoFecha()" style="padding:10px 16px;"><i class="fa-solid fa-plus"></i> Agregar</button>
+        </div>
+        <div id="fechasList" style="margin-top:8px;text-align:center;"></div>
+        <div id="fechasCount" style="font-size:12px;color:var(--color-text-muted);margin-top:4px;text-align:center;"></div>
+      </div>
+      <div id="fechasRangoArea" class="hidden">
+        <div class="form-row">
+          <div class="form-group">
+            <label>Fecha Inicio <span class="req">*</span></label>
+            <input type="date" id="inputFechaRangoInicio" onchange="updateFechaRangoFinMin()">
+          </div>
+          <div class="form-group">
+            <label>Fecha Fin <span class="req">*</span></label>
+            <input type="date" id="inputFechaRangoFin">
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="form-row">
@@ -919,20 +938,39 @@ function submitAll() {
 
   if (selectedType === 'Descanso' && selectedDuration === 'varios') {
     // Multi-date: create one record per date per rep
-    selectedDescansoFechas.forEach(function(fecha) {
+    // Handle both individual and range modes
+    if (selectedDescansoMode === 'rango') {
+      var ri = document.getElementById('inputFechaRangoInicio').value;
+      var rf = document.getElementById('inputFechaRangoFin').value;
       selectedReps.forEach(function(rep) {
         var rec = {
           uid: String(Date.now()) + String(Math.random()).slice(2, 8),
           timestamp: ts, tipo: selectedType,
           idRepartidor: rep.id, nombre: rep.name, estacion: rep.station,
-          fechaInicio: fecha, fechaFin: fecha,
+          fechaInicio: ri, fechaFin: rf,
           motivo: motivo, diasDescanso: '', registradoPor: sessionUser,
           registradoLogin: sessionLogin, comentarios: obs
         };
-        records.push(rec);
-        newRecords.push(rec);
+        records.push(rec); newRecords.push(rec);
       });
-    });
+    } else {
+      selectedDescansoFechas.forEach(function(fecha) {
+        selectedReps.forEach(function(rep) {
+          var rec = {
+            uid: String(Date.now()) + String(Math.random()).slice(2, 8),
+            timestamp: ts, tipo: selectedType,
+            idRepartidor: rep.id, nombre: rep.name, estacion: rep.station,
+            fechaInicio: fecha, fechaFin: fecha,
+            motivo: motivo, diasDescanso: '', registradoPor: sessionUser,
+            registradoLogin: sessionLogin, comentarios: obs
+          };
+          records.push(rec); newRecords.push(rec);
+        });
+      });
+    }
+    selectedDescansoFechas = [];
+    renderFechasList();
+  });
   } else {
     selectedReps.forEach(function(rep) {
       var rec = {
@@ -1296,6 +1334,39 @@ function addBulkReps() {
 
 // === MULTI-DATE DESCANSO ===
 var selectedDescansoFechas = [];
+var selectedDescansoMode = 'individual';
+
+function setModoFechas(mode) {
+  selectedDescansoMode = mode;
+  document.getElementById('modoFechasInd').classList.toggle('active', mode === 'individual');
+  document.getElementById('modoFechasRango').classList.toggle('active', mode === 'rango');
+  document.getElementById('fechasIndividualArea').classList.toggle('hidden', mode !== 'individual');
+  document.getElementById('fechasRangoArea').classList.toggle('hidden', mode !== 'rango');
+  if (mode === 'rango') {
+    var now = new Date();
+    var daysAhead = (now.getHours() >= 18 && now.getMinutes() >= 30) || now.getHours() >= 19 ? 2 : 1;
+    var minDate = new Date(now);
+    minDate.setDate(minDate.getDate() + daysAhead);
+    var minStr = minDate.getFullYear() + '-' + String(minDate.getMonth()+1).padStart(2,'0') + '-' + String(minDate.getDate()).padStart(2,'0');
+    document.getElementById('inputFechaRangoInicio').setAttribute('min', minStr);
+    document.getElementById('inputFechaRangoFin').setAttribute('min', minStr);
+  }
+}
+
+function updateFechaRangoFinMin() {
+  var inicio = document.getElementById('inputFechaRangoInicio').value;
+  if (inicio) {
+    var d = new Date(inicio + 'T00:00:00');
+    d.setDate(d.getDate() + 1);
+    var minFin = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    document.getElementById('inputFechaRangoFin').setAttribute('min', minFin);
+    var currentFin = document.getElementById('inputFechaRangoFin').value;
+    if (currentFin && currentFin <= inicio) {
+      document.getElementById('inputFechaRangoFin').value = minFin;
+    }
+  }
+}
+
 
 function addDescansoFecha() {
   var input = document.getElementById('inputFechaMulti');
