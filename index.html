@@ -25,7 +25,7 @@
   .header h1 { font-size:22px; font-weight:700; margin-bottom:4px; }
   .header p { color:var(--color-text-muted); font-size:13px; }
 
-  .stats-row { display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-bottom:20px; }
+  .stats-row { display:grid; grid-template-columns:repeat(6,1fr); gap:10px; margin-bottom:20px; }
   .stat-card { background:var(--color-bg-secondary); border:1px solid var(--color-border-light); border-radius:10px; padding:12px; text-align:center; }
   .stat-card .stat-icon { font-size:18px; margin-bottom:4px; }
   .stat-card .stat-value { font-size:24px; font-weight:700; font-family:var(--font-mono); }
@@ -175,6 +175,7 @@
   @media (max-width:768px) {
     body { padding:12px; }
     .stats-row { grid-template-columns:repeat(3,1fr); }
+    .type-selector { flex-wrap:wrap; }
     .form-row { grid-template-columns:1fr; }
     .form-card { padding:16px; }
     .table-toolbar { flex-direction:column; align-items:stretch; }
@@ -194,6 +195,10 @@
     .type-btn { flex:1 1 100%; }
   }
 
+
+  .type-btn.sel-maximos { border-color:#FF6F00; background:rgba(255,111,0,0.08); }
+  .badge.maximos { background:rgba(255,111,0,0.1); color:#FF6F00; }
+  .stat-card.maximos .stat-value { color:#FF6F00; }
 </style>
 </head>
 <body>
@@ -234,6 +239,7 @@
   <div class="stat-card suspension"><div class="stat-icon"><i class="fa-solid fa-ban"></i></div><div class="stat-value" id="statSuspension">0</div><div class="stat-label">Suspensiones</div></div>
   <div class="stat-card activacion"><div class="stat-icon"><i class="fa-solid fa-circle-check"></i></div><div class="stat-value" id="statActivacion">0</div><div class="stat-label">Activaciones</div></div>
   <div class="stat-card cambio_dias"><div class="stat-icon"><i class="fa-solid fa-calendar-days"></i></div><div class="stat-value" id="statCambioDias">0</div><div class="stat-label">Cambio Días</div></div>
+  <div class="stat-card maximos"><div class="stat-icon"><i class="fa-solid fa-box-archive"></i></div><div class="stat-value" id="statMaximos">0</div><div class="stat-label">Máximos</div></div>
 </div>
 
 
@@ -259,6 +265,13 @@
       </div>
       <div class="ac-list" id="acList"></div>
     </div>
+    <div style="text-align:center;margin-top:6px;">
+      <button type="button" id="bulkToggleBtn" onclick="toggleBulkMode()" style="background:none;border:none;color:#0052CC;font-size:12px;cursor:pointer;font-family:inherit;text-decoration:underline;">📋 Carga masiva por ID</button>
+    </div>
+    <div id="bulkInputArea" class="hidden" style="margin-top:8px;">
+      <textarea id="bulkIds" placeholder="Pega los STORE IDs aquí (uno por línea o separados por coma)..." rows="4" style="width:100%;padding:10px 12px;border:1px solid var(--color-border);border-radius:8px;font-size:13px;font-family:var(--font-mono);color:var(--color-text);background:var(--color-bg);resize:vertical;"></textarea>
+      <button class="ac-add-btn" onclick="addBulkReps()" style="margin-top:6px;width:100%;"><i class="fa-solid fa-users"></i> Agregar todos</button>
+    </div>
     <div class="reps-list" id="repsList"></div>
     <div class="reps-count" id="repsCount"></div>
   </div>
@@ -271,6 +284,7 @@
       <button class="type-btn" onclick="selectType('Suspensión')" id="btnSuspension"><div class="type-icon"><i class="fa-solid fa-ban"></i></div><div class="type-label">Suspensión</div></button>
       <button class="type-btn" onclick="selectType('Activación')" id="btnActivacion"><div class="type-icon"><i class="fa-solid fa-circle-check"></i></div><div class="type-label">Activación</div></button>
       <button class="type-btn" onclick="selectType('Cambio Días')" id="btnCambioDias"><div class="type-icon"><i class="fa-solid fa-calendar-days"></i></div><div class="type-label">Cambio Días</div></button>
+      <button class="type-btn" onclick="selectType('Máximos')" id="btnMaximos"><div class="type-icon"><i class="fa-solid fa-box-archive"></i></div><div class="type-label">Máximos</div></button>
     </div>
 
     <div id="durationRow" class="hidden">
@@ -293,6 +307,27 @@
         <button type="button" class="day-chip" onclick="toggleDay(this,'Domingo')">Domingo</button>
         <button type="button" class="day-chip" onclick="toggleDay(this,'Sin Descanso')">Sin Descanso</button>
       </div>
+    </div>
+
+    <div id="maximosRow" class="hidden" style="margin-bottom:12px;text-align:center;">
+      <span class="section-label">Cantidad máxima de paquetes <span class="req">*</span></span>
+      <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-top:8px;">
+        <span style="font-size:13px;color:var(--color-text-muted);font-weight:600;">32</span>
+        <input type="range" id="inputMaximos" min="32" max="96" value="48" step="1" oninput="document.getElementById('maximosValue').textContent=this.value" style="flex:1;max-width:300px;accent-color:#FF6F00;">
+        <span style="font-size:13px;color:var(--color-text-muted);font-weight:600;">96</span>
+      </div>
+      <div style="font-size:32px;font-weight:700;color:#FF6F00;margin-top:6px;" id="maximosValue">48</div>
+      <div style="font-size:11px;color:var(--color-text-muted);">paquetes</div>
+    </div>
+
+    <div id="multiFechasRow" class="hidden">
+      <span class="section-label">Fechas de descanso <span class="req">*</span></span>
+      <div style="display:flex;gap:8px;align-items:center;justify-content:center;">
+        <input type="date" id="inputFechaMulti" style="padding:10px 12px;border:1px solid var(--color-border);border-radius:8px;font-size:14px;font-family:inherit;color:var(--color-text);background:var(--color-bg);">
+        <button type="button" class="ac-add-btn" onclick="addDescansoFecha()" style="padding:10px 16px;"><i class="fa-solid fa-plus"></i> Agregar</button>
+      </div>
+      <div id="fechasList" style="margin-top:8px;text-align:center;"></div>
+      <div id="fechasCount" style="font-size:12px;color:var(--color-text-muted);margin-top:4px;text-align:center;"></div>
     </div>
 
     <div class="form-row">
@@ -384,7 +419,8 @@ var MOTIVOS = {
   'Descanso': ['Temas Personales', 'Temas de Salud', 'Temas de Negocio', 'Mal Performance', 'Deja Paquetes'],
   'Suspensión': ['Mal Performance', 'Rechazo de Ruta', 'Backlog', "DNR's", 'Revisión de Coordenadas', 'Revisión de Radio', 'Temas de Pagos', 'Fallas en Dispositivo Móvil y/o App', 'Solicitada por el Partner', 'Temas Personales', 'Temas de Salud'],
   'Activación': ['Ingreso Nuevo', 'Reentrenamiento Completado', 'Reactivación', 'Sale en Día de Descanso'],
-  'Cambio Días': ['Cambio de Días de Descanso']
+  'Cambio Días': ['Cambio de Días de Descanso'],
+  'Máximos': ['Límite de paquetes']
 };
 var OWNER_LOGIN = 'avelazqz';
 
@@ -437,7 +473,6 @@ function saveToCloud(newRecords) {
   try { localStorage.setItem('hubDelivery_v4', JSON.stringify(records)); } catch(e) {}
   if (API_URL === 'PEGA_TU_URL_AQUI') { showToast('⚠️ Guardado solo localmente', true); return Promise.resolve(); }
   setSyncStatus('loading', 'Guardando...');
-  // Try POST first
   return fetch(API_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'text/plain' },
@@ -452,7 +487,6 @@ function saveToCloud(newRecords) {
     }
   })
   .catch(function(err) {
-    // POST failed — fallback to GET (addone) for each record
     console.log('POST failed, trying GET fallback:', err.message);
     var promises = newRecords.map(function(rec) {
       var params = Object.keys(rec).map(function(k) {
@@ -515,14 +549,15 @@ function updateMinDate() {
   document.getElementById('inputFechaInicio').setAttribute('min', minStr);
   document.getElementById('inputFechaInicio').value = minStr;
   document.getElementById('inputFechaFin').setAttribute('min', minStr);
+  try { document.getElementById('inputFechaMulti').setAttribute('min', minStr); } catch(e) {}
 }
 
 function selectType(type) {
   selectedType = type;
   selectedDuration = '';
   document.querySelectorAll('.type-btn').forEach(function(b) { b.className = 'type-btn'; });
-  var cm = { 'Descanso':'sel-descanso', 'Suspensión':'sel-suspension', 'Activación':'sel-activacion', 'Cambio Días':'sel-cambio_dias' };
-  var im = { 'Descanso':'btnDescanso', 'Suspensión':'btnSuspension', 'Activación':'btnActivacion', 'Cambio Días':'btnCambioDias' };
+  var cm = { 'Descanso':'sel-descanso', 'Suspensión':'sel-suspension', 'Activación':'sel-activacion', 'Cambio Días':'sel-cambio_dias', 'Máximos':'sel-maximos' };
+  var im = { 'Descanso':'btnDescanso', 'Suspensión':'btnSuspension', 'Activación':'btnActivacion', 'Cambio Días':'btnCambioDias', 'Máximos':'btnMaximos' };
   document.getElementById(im[type]).classList.add(cm[type]);
 
   // Motivos
@@ -537,11 +572,17 @@ function selectType(type) {
   if (type === 'Descanso') {
     dr.classList.remove('hidden');
       document.getElementById('daySelectRow').classList.add('hidden');
+    document.getElementById('maximosRow').classList.add('hidden');
+    document.getElementById('multiFechasRow').classList.add('hidden');
+    document.getElementById('fechaInicioGroup').style.display = '';
     document.getElementById('fechaFinGroup').classList.add('hidden');
     document.getElementById('fechaInicioLabel').innerHTML = 'Fecha <span class="req">*</span>';
   } else {
     dr.classList.add('hidden');
     document.getElementById('daySelectRow').classList.add('hidden');
+    document.getElementById('maximosRow').classList.add('hidden');
+    document.getElementById('multiFechasRow').classList.add('hidden');
+    document.getElementById('fechaInicioGroup').style.display = '';
     if (type === 'Suspensión') {
       document.getElementById('fechaFinGroup').classList.remove('hidden');
       document.getElementById('fechaInicioLabel').innerHTML = 'Fecha Inicio <span class="req">*</span>';
@@ -568,6 +609,15 @@ function selectType(type) {
       // Reset day selection
       document.querySelectorAll('.day-chip').forEach(function(c) { c.classList.remove('selected'); });
       selectedDays = [];
+    } else if (type === 'Máximos') {
+      document.getElementById('fechaFinGroup').classList.add('hidden');
+      document.getElementById('fechaInicioGroup').style.display = 'none';
+      document.getElementById('indefToggle').style.display = 'none';
+      document.getElementById('daySelectRow').classList.add('hidden');
+      document.getElementById('motivoGroup').classList.add('hidden');
+      document.getElementById('maximosRow').classList.remove('hidden');
+      document.getElementById('inputMaximos').value = 48;
+      document.getElementById('maximosValue').textContent = '48';
     } else {
       document.getElementById('fechaFinGroup').classList.add('hidden');
       document.getElementById('fechaInicioLabel').innerHTML = 'Fecha <span class="req">*</span>';
@@ -593,12 +643,16 @@ function selectDuration(dur) {
   if (dur === '1dia') {
     document.getElementById('dur1').classList.add('active');
     document.getElementById('fechaFinGroup').classList.add('hidden');
+    document.getElementById('multiFechasRow').classList.add('hidden');
+    document.getElementById('fechaInicioGroup').style.display = '';
     document.getElementById('fechaInicioLabel').innerHTML = 'Fecha <span class="req">*</span>';
   } else {
     document.getElementById('durV').classList.add('active');
-    document.getElementById('fechaFinGroup').classList.remove('hidden');
-    document.getElementById('fechaInicioLabel').innerHTML = 'Fecha Inicio <span class="req">*</span>';
-    updateFechaFinMin();
+    document.getElementById('fechaFinGroup').classList.add('hidden');
+    document.getElementById('fechaInicioGroup').style.display = 'none';
+    document.getElementById('multiFechasRow').classList.remove('hidden');
+    selectedDescansoFechas = [];
+    renderFechasList();
   }
 }
 
@@ -778,90 +832,135 @@ function showToast(msg, isError) {
 function submitAll() {
   if (!selectedType) { showToast('⚠️ Selecciona un tipo de cambio', true); return; }
   if (selectedType === 'Descanso' && !selectedDuration) { showToast('⚠️ Selecciona la duración del descanso', true); return; }
+  
   var motivo = document.getElementById('inputMotivo').value;
-  if (selectedType !== 'Cambio Días' && !motivo) { showToast('⚠️ Selecciona un motivo', true); return; }
-  if (selectedType === 'Cambio Días') motivo = 'Cambio de Días de Descanso';
-  var fechaInicio = document.getElementById('inputFechaInicio').value;
+  if (selectedType === 'Máximos') {
+    motivo = 'Límite de paquetes';
+  } else if (selectedType === 'Cambio Días') {
+    motivo = 'Cambio de Días de Descanso';
+  } else if (!motivo) {
+    showToast('⚠️ Selecciona un motivo', true); return;
+  }
+
+  // Validate day selection for Cambio Días
   if (selectedType === 'Cambio Días' && selectedDays.length === 0) {
     showToast('⚠️ Selecciona al menos un día de la semana', true); return;
   }
-  if (!fechaInicio) { showToast('⚠️ Selecciona la fecha', true); return; }
-  // Validate future date (Activación: after 4:30pm, others: after 6:30pm -> 2 days ahead)
-  var nowCheck = new Date();
-  var daysReq;
-  if (selectedType === 'Activación') {
-    daysReq = (nowCheck.getHours() >= 16 && nowCheck.getMinutes() >= 30) || nowCheck.getHours() >= 17 ? 2 : 1;
-  } else {
-    daysReq = (nowCheck.getHours() >= 18 && nowCheck.getMinutes() >= 30) || nowCheck.getHours() >= 19 ? 2 : 1;
-  }
-  var minAllowed = new Date(nowCheck);
-  minAllowed.setDate(minAllowed.getDate() + daysReq);
-  minAllowed.setHours(0,0,0,0);
-  var selected = new Date(fechaInicio + 'T00:00:00');
-  if (selected < minAllowed) {
-    var cutoffTime = selectedType === 'Activación' ? '4:30 PM' : '6:30 PM';
-    var msg = daysReq === 2 ? '⚠️ Después de las ' + cutoffTime + ' los ajustes son para 2 días en adelante' : '⚠️ La fecha debe ser posterior a hoy';
-    showToast(msg, true);
-    return;
-  }
-  var fechaFin = document.getElementById('inputFechaFin').value;
+
+  // Validate dates (skip for Máximos)
+  var fechaInicio = '';
+  var fechaFin = '';
   var isIndefinido = document.getElementById('btnIndefinido').classList.contains('active');
-  if ((selectedType === 'Descanso' && selectedDuration === 'varios') && !fechaFin) {
-    showToast('⚠️ Selecciona la fecha fin', true); return;
+
+  if (selectedType === 'Máximos') {
+    // No date needed — use today
+    var today = new Date();
+    fechaInicio = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+    fechaFin = '';
+  } else if (selectedType === 'Descanso' && selectedDuration === 'varios') {
+    // Multi-date mode: validate selectedDescansoFechas
+    if (selectedDescansoFechas.length === 0) {
+      showToast('⚠️ Agrega al menos una fecha de descanso', true); return;
+    }
+    // Dates validated individually when added
+  } else {
+    fechaInicio = document.getElementById('inputFechaInicio').value;
+    if (!fechaInicio) { showToast('⚠️ Selecciona la fecha', true); return; }
+    // Validate future date
+    var nowCheck = new Date();
+    var daysReq;
+    if (selectedType === 'Activación') {
+      daysReq = (nowCheck.getHours() >= 16 && nowCheck.getMinutes() >= 30) || nowCheck.getHours() >= 17 ? 2 : 1;
+    } else {
+      daysReq = (nowCheck.getHours() >= 18 && nowCheck.getMinutes() >= 30) || nowCheck.getHours() >= 19 ? 2 : 1;
+    }
+    var minAllowed = new Date(nowCheck);
+    minAllowed.setDate(minAllowed.getDate() + daysReq);
+    minAllowed.setHours(0,0,0,0);
+    var selected = new Date(fechaInicio + 'T00:00:00');
+    if (selected < minAllowed) {
+      var cutoffTime = selectedType === 'Activación' ? '4:30 PM' : '6:30 PM';
+      var msg = daysReq === 2 ? '⚠️ Después de las ' + cutoffTime + ' los ajustes son para 2 días en adelante' : '⚠️ La fecha debe ser posterior a hoy';
+      showToast(msg, true);
+      return;
+    }
+    fechaFin = document.getElementById('inputFechaFin').value;
+    if (selectedType === 'Suspensión' && !isIndefinido && !fechaFin) {
+      showToast('⚠️ Selecciona la fecha fin o marca como Indefinida', true); return;
+    }
   }
-  if (selectedType === 'Suspensión' && !isIndefinido && !fechaFin) {
-    showToast('⚠️ Selecciona la fecha fin o marca como Indefinida', true); return;
-  }
+
   if (selectedReps.length === 0) { showToast('⚠️ Agrega al menos un repartidor', true); return; }
 
+  // Determine finalFechaFin
   var finalFechaFin = fechaFin;
   if (selectedType === 'Descanso' && selectedDuration === '1dia') finalFechaFin = fechaInicio;
   if (selectedType === 'Activación') finalFechaFin = '';
   if (selectedType === 'Suspensión' && isIndefinido) finalFechaFin = 'INDEFINIDO';
   if (selectedType === 'Cambio Días') finalFechaFin = '';
+  if (selectedType === 'Máximos') finalFechaFin = '';
 
   var obs = document.getElementById('inputObs').value.trim();
   var tsNow = new Date();
   var ts = tsNow.toLocaleDateString('es-MX', { day:'2-digit', month:'short', year:'numeric' }) + ' ' + tsNow.toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' });
-  var count = selectedReps.length;
 
   var newRecords = [];
-  // Disable button while saving
   var btn = document.getElementById('btnSubmit');
   btn.disabled = true;
   btn.innerHTML = '<i class="fa-solid fa-circle-notch spinner"></i> Guardando...';
 
-  selectedReps.forEach(function(rep) {
-    var rec = {
-      uid: String(Date.now()) + String(Math.random()).slice(2, 8),
-      timestamp: ts,
-      tipo: selectedType,
-      idRepartidor: rep.id,
-      nombre: rep.name,
-      estacion: rep.station,
-      fechaInicio: fechaInicio,
-      fechaFin: finalFechaFin,
-      motivo: motivo,
-      diasDescanso: (selectedType === 'Cambio Días' || selectedType === 'Activación') ? selectedDays.join(', ') : '',
-      registradoPor: sessionUser,
-      registradoLogin: sessionLogin,
-      comentarios: obs
-    };
-    records.push(rec);
-    newRecords.push(rec);
-  });
+  // Determine diasDescanso value
+  var diasValue = '';
+  if (selectedType === 'Cambio Días' || selectedType === 'Activación') {
+    diasValue = selectedDays.join(', ');
+  } else if (selectedType === 'Máximos') {
+    diasValue = document.getElementById('inputMaximos').value;
+  }
 
-  // Optimistic: update UI immediately (don't wait for Google Sheets)
+  if (selectedType === 'Descanso' && selectedDuration === 'varios') {
+    // Multi-date: create one record per date per rep
+    selectedDescansoFechas.forEach(function(fecha) {
+      selectedReps.forEach(function(rep) {
+        var rec = {
+          uid: String(Date.now()) + String(Math.random()).slice(2, 8),
+          timestamp: ts, tipo: selectedType,
+          idRepartidor: rep.id, nombre: rep.name, estacion: rep.station,
+          fechaInicio: fecha, fechaFin: fecha,
+          motivo: motivo, diasDescanso: '', registradoPor: sessionUser,
+          registradoLogin: sessionLogin, comentarios: obs
+        };
+        records.push(rec);
+        newRecords.push(rec);
+      });
+    });
+  } else {
+    selectedReps.forEach(function(rep) {
+      var rec = {
+        uid: String(Date.now()) + String(Math.random()).slice(2, 8),
+        timestamp: ts, tipo: selectedType,
+        idRepartidor: rep.id, nombre: rep.name, estacion: rep.station,
+        fechaInicio: fechaInicio, fechaFin: finalFechaFin,
+        motivo: motivo, diasDescanso: diasValue, registradoPor: sessionUser,
+        registradoLogin: sessionLogin, comentarios: obs
+      };
+      records.push(rec);
+      newRecords.push(rec);
+    });
+  }
+
+  var count = newRecords.length;
+  // Optimistic: update UI immediately
   btn.disabled = false;
   selectedReps = [];
+  selectedDescansoFechas = [];
   renderRepsList();
+  renderFechasList();
   updateSubmitBtn();
   document.getElementById('inputNombre').value = '';
   document.getElementById('inputObs').value = '';
   updateStats();
   renderTable();
   showToast('✅ ' + count + ' registro' + (count > 1 ? 's agregados' : ' agregado') + ' correctamente');
-  // Save to Google Sheets in background
   saveToCloud(newRecords);
 }
 
@@ -888,11 +987,13 @@ function updateStats() {
   var s = visibleRecords.filter(function(r) { return r.tipo === 'Suspensión'; }).length;
   var a = visibleRecords.filter(function(r) { return r.tipo === 'Activación'; }).length;
   var cd = visibleRecords.filter(function(r) { return r.tipo === 'Cambio Días'; }).length;
+  var mx = visibleRecords.filter(function(r) { return r.tipo === 'Máximos'; }).length;
   document.getElementById('statTotal').textContent = visibleRecords.length;
   document.getElementById('statDescanso').textContent = d;
   document.getElementById('statSuspension').textContent = s;
   document.getElementById('statActivacion').textContent = a;
   document.getElementById('statCambioDias').textContent = cd;
+  document.getElementById('statMaximos').textContent = mx;
   document.getElementById('tabCount').textContent = visibleRecords.length;
 }
 
@@ -950,8 +1051,8 @@ function renderTable() {
   var empty = document.getElementById('emptyState');
   if (filtered.length === 0) { tbody.innerHTML = ''; empty.style.display = 'block'; return; }
   empty.style.display = 'none';
-  var bc = { 'Descanso':'descanso', 'Suspensión':'suspension', 'Activación':'activacion', 'Cambio Días':'cambio_dias' };
-  var bi = { 'Descanso':'fa-bed', 'Suspensión':'fa-ban', 'Activación':'fa-circle-check', 'Cambio Días':'fa-calendar-days' };
+  var bc = { 'Descanso':'descanso', 'Suspensión':'suspension', 'Activación':'activacion', 'Cambio Días':'cambio_dias', 'Máximos':'maximos' };
+  var bi = { 'Descanso':'fa-bed', 'Suspensión':'fa-ban', 'Activación':'fa-circle-check', 'Cambio Días':'fa-calendar-days', 'Máximos':'fa-box-archive' };
   // Build duplicate map
   var dupMap = {};
   filtered.forEach(function(r) {
@@ -980,7 +1081,7 @@ function renderTable() {
       '<td>' + r.nombre + dupBadge + '</td>' +
       '<td style="white-space:nowrap;">' + (isFuture ? '<span style="color:#FF8F00;font-size:9px;font-weight:700;letter-spacing:0.3px;">FECHA FUTURA</span><br>' : '') + formatDateShort(r.fechaInicio) + '</td>' +
       '<td style="white-space:nowrap;">' + formatDateShort(r.fechaFin) + '</td>' +
-      '<td>' + r.motivo + (r.diasDescanso ? '<br><span style="font-size:11px;color:#7B61FF;font-weight:600;">' + r.diasDescanso + '</span>' : '') + '</td>' +
+      '<td>' + r.motivo + (r.tipo === 'Máximos' && r.diasDescanso ? '<br><span style="font-size:11px;color:#FF6F00;font-weight:600;">📦 ' + r.diasDescanso + ' paquetes</span>' : (r.diasDescanso ? '<br><span style="font-size:11px;color:#7B61FF;font-weight:600;">' + r.diasDescanso + '</span>' : '')) + '</td>' +
             '<td style="color:var(--color-text-muted);font-size:12px;">' + (r.registradoPor||'—') + '</td>' +
       '<td>' + ((r.registradoPor === sessionUser || r.registradoLogin === sessionLogin || sessionLogin === OWNER_LOGIN) ? '<button class="btn-delete" onclick="deleteRecord(\'' + r.uid + '\')" title="Eliminar"><i class="fa-solid fa-trash-can"></i></button>' : '<span style="color:#ccc;font-size:11px;">—</span>') + '</td></tr>';
   }).join('');
@@ -1103,7 +1204,7 @@ function autoCleanup() {
   }
 }
 
-// Init — load config (operators + VRs) from Google Sheets first
+// Init
 function initApp() {
   if (API_URL === 'PEGA_TU_URL_AQUI') {
     updateStats(); renderTable();
@@ -1129,7 +1230,6 @@ function initApp() {
       console.log('Config failed, using cache:', err.message);
     })
     .finally(function() {
-      // Re-check saved session with fresh operators
       try {
         var sl = localStorage.getItem('hubDelivery_sessionLogin');
         var sd = localStorage.getItem('hubDelivery_sessionDate');
@@ -1156,6 +1256,91 @@ try { updateMinDate(); } catch(e) {}
 
 
   
+
+
+// === BULK LOADING ===
+function toggleBulkMode() {
+  var area = document.getElementById('bulkInputArea');
+  var btn = document.getElementById('bulkToggleBtn');
+  if (area.classList.contains('hidden')) {
+    area.classList.remove('hidden');
+    btn.innerHTML = '✏️ Búsqueda individual';
+  } else {
+    area.classList.add('hidden');
+    btn.innerHTML = '📋 Carga masiva por ID';
+  }
+}
+
+function addBulkReps() {
+  var text = document.getElementById('bulkIds').value.trim();
+  if (!text) return;
+  var ids = text.split(/[\n,]+/).map(function(s) { return s.trim(); }).filter(function(s) { return s.length > 0; });
+  var added = 0, notFound = [], duplicates = [];
+  var alreadyIds = selectedReps.map(function(r) { return r.id; });
+  ids.forEach(function(id) {
+    var rep = REPARTIDORES.find(function(r) { return String(r.id) === String(id); });
+    if (!rep) { notFound.push(id); return; }
+    if (alreadyIds.indexOf(rep.id) !== -1) { duplicates.push(id); return; }
+    selectedReps.push({ id: rep.id, name: rep.name, station: rep.station });
+    alreadyIds.push(rep.id);
+    added++;
+  });
+  document.getElementById('bulkIds').value = '';
+  renderRepsList();
+  updateSubmitBtn();
+  var msg = '✅ ' + added + ' agregado' + (added !== 1 ? 's' : '');
+  if (notFound.length) msg += ' · ' + notFound.length + ' no encontrado' + (notFound.length !== 1 ? 's' : '');
+  if (duplicates.length) msg += ' · ' + duplicates.length + ' duplicado' + (duplicates.length !== 1 ? 's' : '');
+  showToast(msg, notFound.length > 0);
+}
+
+// === MULTI-DATE DESCANSO ===
+var selectedDescansoFechas = [];
+
+function addDescansoFecha() {
+  var input = document.getElementById('inputFechaMulti');
+  var fecha = input.value;
+  if (!fecha) return;
+  if (selectedDescansoFechas.indexOf(fecha) !== -1) {
+    showToast('⚠️ Esa fecha ya está seleccionada', true);
+    return;
+  }
+  var now = new Date();
+  var daysAhead = (now.getHours() >= 18 && now.getMinutes() >= 30) || now.getHours() >= 19 ? 2 : 1;
+  var minDate = new Date(now);
+  minDate.setDate(minDate.getDate() + daysAhead);
+  minDate.setHours(0,0,0,0);
+  if (new Date(fecha + 'T00:00:00') < minDate) {
+    showToast('⚠️ La fecha debe ser de ' + daysAhead + ' día' + (daysAhead > 1 ? 's' : '') + ' en adelante', true);
+    return;
+  }
+  selectedDescansoFechas.push(fecha);
+  selectedDescansoFechas.sort();
+  input.value = '';
+  renderFechasList();
+}
+
+function removeDescansoFecha(idx) {
+  selectedDescansoFechas.splice(idx, 1);
+  renderFechasList();
+}
+
+function renderFechasList() {
+  var container = document.getElementById('fechasList');
+  var countEl = document.getElementById('fechasCount');
+  if (!container) return;
+  if (selectedDescansoFechas.length === 0) {
+    container.innerHTML = '';
+    countEl.textContent = '';
+    return;
+  }
+  container.innerHTML = selectedDescansoFechas.map(function(f, i) {
+    return '<span class="rep-chip" style="background:rgba(0,101,255,0.08);border-color:rgba(0,101,255,0.2);">' +
+      '<strong>' + formatDateShort(f) + '</strong>' +
+      '<button class="rep-remove" onclick="removeDescansoFecha(' + i + ')"><i class="fa-solid fa-xmark"></i></button></span>';
+  }).join('');
+  countEl.textContent = selectedDescansoFechas.length + ' fecha' + (selectedDescansoFechas.length > 1 ? 's' : '') + ' seleccionada' + (selectedDescansoFechas.length > 1 ? 's' : '');
+}
 
   // PWA Service Worker Registration
   if ('serviceWorker' in navigator) {
